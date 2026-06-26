@@ -2,26 +2,30 @@ import Link from "next/link";
 import { createServerSupabaseClient, isSupabaseConfiguredServer } from "@/lib/supabase-server";
 import { redirect } from "next/navigation";
 import LogoutButton from "@/components/logout-button";
-
-const navItems = [
-  { href: "/dashboard", label: "Overview", icon: "▦" },
-  { href: "/dashboard/url-generator", label: "URL Generator", icon: "🔗" },
-  { href: "/dashboard/chat-rotator", label: "Chat Rotator", icon: "🔄" },
-  { href: "/dashboard/bio-link", label: "Bio Link", icon: "👤" },
-  { href: "/dashboard/conversions", label: "Konversi", icon: "💰" },
-  { href: "/dashboard/analytics", label: "Analytics", icon: "📊" },
-  { href: "/dashboard/wallet", label: "Wallet WA API", icon: "👛" },
-  { href: "/dashboard/settings", label: "Pixel Settings", icon: "⚙️" },
-];
+import { ROLES, ROLE_NAV, UserRole } from "@/lib/roles";
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   let user = null;
+  let role: UserRole = "advertiser"; // default demo role
+
   if (isSupabaseConfiguredServer()) {
     const supabase = await createServerSupabaseClient();
     const { data } = await supabase.auth.getUser();
     user = data.user;
     if (!user) redirect("/login");
+
+    // Fetch role from user_profiles
+    const { data: profile } = await supabase
+      .from("user_profiles")
+      .select("role")
+      .eq("id", user.id)
+      .single();
+
+    if (profile?.role) role = profile.role as UserRole;
   }
+
+  const navItems = ROLE_NAV[role];
+  const roleConfig = ROLES[role];
 
   return (
     <div className="min-h-screen flex bg-gray-50">
@@ -42,6 +46,11 @@ export default async function DashboardLayout({ children }: { children: React.Re
           ))}
         </nav>
         <div className="px-4 py-4 border-t">
+          <div className="flex items-center gap-2 mb-2">
+            <span className={`text-xs font-semibold px-2 py-0.5 rounded ${roleConfig.color}`}>
+              {roleConfig.label}
+            </span>
+          </div>
           <p className="text-xs text-gray-400 mb-2 truncate">{user?.email ?? "demo@watools.id"}</p>
           <LogoutButton />
         </div>

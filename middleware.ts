@@ -1,8 +1,8 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
+import { RESTRICTED_PATHS, ROLE_HOME, UserRole } from '@/lib/roles'
 
 export async function middleware(request: NextRequest) {
-  // Skip middleware if Supabase env vars are not configured yet
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
   const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
   if (!supabaseUrl || supabaseUrl.includes('your_supabase') || !supabaseKey || supabaseKey.includes('your_supabase')) {
@@ -29,7 +29,6 @@ export async function middleware(request: NextRequest) {
   )
 
   const { data: { user } } = await supabase.auth.getUser()
-
   const { pathname } = request.nextUrl
 
   if (!user && pathname.startsWith('/dashboard')) {
@@ -37,7 +36,31 @@ export async function middleware(request: NextRequest) {
   }
 
   if (user && (pathname === '/login' || pathname === '/register')) {
-    return NextResponse.redirect(new URL('/dashboard', request.url))
+    // Fetch role to redirect to correct home page
+    const { data: profile } = await supabase
+      .from('user_profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single()
+    const role: UserRole = (profile?.role as UserRole) ?? 'advertiser'
+    return NextResponse.redirect(new URL(ROLE_HOME[role], request.url))
+  }
+
+  // RBAC path enforcement
+  if (user && pathname.startsWith('/dashboard')) {
+    const { data: profile } = await supabase
+      .from('user_profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single()
+    const role: UserRole = (profile?.role as UserRole) ?? 'advertiser'
+
+    // Check if this path is restricted and role is not allowed
+    for (const [restrictedPath, allowedRoles] of Object.entries(RESTRICTED_PATHS)) {
+      if (pathname.startsWith(restrictedPath) && !allowedRoles.includes(role)) {
+        return NextResponse.redirect(new URL(ROLE_HOME[role], request.url))
+      }
+    }
   }
 
   return supabaseResponse

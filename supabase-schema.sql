@@ -1,5 +1,51 @@
 -- Jalankan di Supabase SQL Editor
 
+-- Table: user_profiles (role-based access control)
+create table if not exists user_profiles (
+  id uuid primary key references auth.users(id) on delete cascade,
+  role text not null default 'advertiser' check (role in ('admin', 'advertiser', 'cs')),
+  full_name text,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+
+alter table user_profiles enable row level security;
+
+-- Users can read their own profile
+create policy "Users read own profile" on user_profiles
+  for select using (auth.uid() = id);
+
+-- Users can update their own profile
+create policy "Users update own profile" on user_profiles
+  for update using (auth.uid() = id);
+
+-- Admin can read all profiles (for user management page)
+create policy "Admin reads all profiles" on user_profiles
+  for select using (
+    exists (select 1 from user_profiles where id = auth.uid() and role = 'admin')
+  );
+
+-- Admin can update all profiles (for role assignment)
+create policy "Admin updates all profiles" on user_profiles
+  for update using (
+    exists (select 1 from user_profiles where id = auth.uid() and role = 'admin')
+  );
+
+-- Auto-create profile on user signup
+create or replace function public.handle_new_user()
+returns trigger as $$
+begin
+  insert into public.user_profiles (id, full_name)
+  values (new.id, new.raw_user_meta_data->>'full_name');
+  return new;
+end;
+$$ language plpgsql security definer;
+
+create or replace trigger on_auth_user_created
+  after insert on auth.users
+  for each row execute procedure public.handle_new_user();
+
+
 -- Table: wa_links
 create table if not exists wa_links (
   id uuid primary key default gen_random_uuid(),
