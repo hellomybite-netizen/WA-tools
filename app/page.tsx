@@ -209,64 +209,74 @@ export default function Home() {
 
       {/* PRICING */}
       <section id="harga" className="bg-gray-50 border-y py-20">
-        <div className="max-w-3xl mx-auto px-6">
+        <div className="max-w-5xl mx-auto px-6">
           <div className="text-center mb-12">
             <p className="text-sm font-semibold text-green-600 uppercase tracking-widest mb-2">Harga Transparan</p>
             <h2 className="text-3xl font-bold">Investasi Lebih Kecil dari<br />1 Hari Budget Iklan</h2>
             <p className="text-gray-500 mt-3 text-base">Kalau iklan Anda 1 juta/hari, WA Tools balik modal dalam hitungan jam.</p>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-            {/* Free Plan */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 items-start">
+
+            {/* Starter */}
             <div className="bg-white border rounded-lg p-6">
-              <div className="mb-4">
-                <p className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Gratis</p>
-                <div className="flex items-end gap-1 mt-1">
-                  <span className="text-3xl font-bold">Rp 0</span>
-                  <span className="text-gray-400 text-sm mb-1">/ bulan</span>
+              <div className="mb-5">
+                <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Starter</p>
+                <div className="flex items-end gap-1">
+                  <span className="text-3xl font-bold">Rp 149.000</span>
                 </div>
-                <p className="text-xs text-gray-400 mt-1">Untuk mencoba selama 7 hari</p>
+                <p className="text-gray-400 text-sm mt-0.5">/ bulan · Setara Rp 5.000/hari</p>
               </div>
               <ul className="space-y-2.5 text-sm text-gray-600 mb-6">
                 {[
-                  "3 link WA dengan UTM tracking",
-                  "1 Chat Rotator (maks. 3 CS)",
+                  "10 link WA + UTM tracking",
+                  "2 Chat Rotator (maks. 5 CS)",
                   "1 halaman Bio Link",
-                  "Analytics 7 hari terakhir",
-                  "Watermark WA Tools",
+                  "Analytics 30 hari",
+                  "Conversion tracking (manual CS)",
+                  "Meta CAPI — event Lead & Purchase",
+                  "Support via email",
                 ].map((f) => (
-                  <li key={f} className="flex gap-2"><span className="text-green-500 flex-shrink-0">✓</span>{f}</li>
+                  <li key={f} className="flex gap-2 items-start"><span className="text-green-500 flex-shrink-0 mt-0.5">✓</span>{f}</li>
+                ))}
+                {[
+                  "Watermark WA Tools di Bio Link",
+                  "Analytics multi-currency",
+                  "Wallet WA API",
+                ].map((f) => (
+                  <li key={f} className="flex gap-2 items-start text-gray-300"><span className="flex-shrink-0 mt-0.5">✗</span>{f}</li>
                 ))}
               </ul>
               <Link href="/register" className="block w-full text-center py-2.5 border border-gray-300 rounded text-sm font-medium hover:bg-gray-50 transition-colors">
-                Mulai Gratis
+                Coba 7 Hari Gratis
               </Link>
             </div>
 
-            {/* Pro Plan */}
-            <div className="bg-gray-900 text-white border border-gray-900 rounded-lg p-6 relative">
-              <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                <span className="bg-green-500 text-white text-xs font-bold px-3 py-1 rounded-full">PALING POPULER</span>
+            {/* Pro — highlighted */}
+            <div className="bg-gray-900 text-white rounded-lg p-6 relative shadow-xl">
+              <div className="absolute -top-3.5 left-1/2 -translate-x-1/2">
+                <span className="bg-green-500 text-white text-xs font-bold px-3 py-1 rounded-full whitespace-nowrap">PALING POPULER</span>
               </div>
-              <div className="mb-4">
-                <p className="text-sm font-semibold text-green-400 uppercase tracking-wide">Pro</p>
-                <div className="flex items-end gap-1 mt-1">
-                  <span className="text-3xl font-bold">Rp 300.000</span>
-                  <span className="text-gray-400 text-sm mb-1">/ bulan</span>
+              <div className="mb-5">
+                <p className="text-xs font-bold text-green-400 uppercase tracking-widest mb-2">Pro</p>
+                <div className="flex items-end gap-1">
+                  <span className="text-3xl font-bold">Rp 299.000</span>
                 </div>
-                <p className="text-xs text-gray-400 mt-1">Setara Rp 10.000 / hari</p>
+                <p className="text-gray-400 text-sm mt-0.5">/ bulan · Setara Rp 10.000/hari</p>
               </div>
               <ul className="space-y-2.5 text-sm text-gray-300 mb-6">
                 {[
                   "Link WA tidak terbatas",
                   "Chat Rotator tidak terbatas (CS tak terbatas)",
                   "Bio Link tanpa watermark + custom domain",
+                  "Analytics multi-currency (IDR, USD, HKD, TWD, MYR)",
                   "Analytics hingga 1 tahun",
-                  "Export laporan ke Excel/PDF",
-                  "Integrasi Meta Pixel & Google Analytics",
+                  "Conversion tracking + Meta CAPI otomatis",
+                  "Wallet WA API (topup saldo untuk broadcast)",
+                  "Export laporan Excel/PDF",
                   "Prioritas support via WhatsApp",
                 ].map((f) => (
-                  <li key={f} className="flex gap-2"><span className="text-green-400 flex-shrink-0">✓</span>{f}</li>
+                  <li key={f} className="flex gap-2 items-start"><span className="text-green-400 flex-shrink-0 mt-0.5">✓</span>{f}</li>
                 ))}
               </ul>
               <Link href="/register" className="block w-full text-center py-2.5 bg-green-500 hover:bg-green-400 text-white rounded text-sm font-semibold transition-colors">
@@ -274,7 +284,40 @@ export default function Home() {
               </Link>
               <p className="text-center text-xs text-gray-500 mt-3">Tidak perlu kartu kredit</p>
             </div>
+
+            {/* Agency */}
+            <div className="bg-white border rounded-lg p-6">
+              <div className="mb-5">
+                <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Agency</p>
+                <div className="flex items-end gap-1">
+                  <span className="text-3xl font-bold">Rp 799.000</span>
+                </div>
+                <p className="text-gray-400 text-sm mt-0.5">/ bulan · Untuk agensi & reseller</p>
+              </div>
+              <ul className="space-y-2.5 text-sm text-gray-600 mb-6">
+                {[
+                  "Semua fitur Pro",
+                  "Multi-workspace (kelola banyak klien)",
+                  "White-label — logo & domain sendiri",
+                  "Akses API untuk integrasi custom",
+                  "Sub-akun untuk tim / klien",
+                  "Laporan per klien otomatis",
+                  "Dedicated support + onboarding",
+                  "SLA uptime 99.9%",
+                ].map((f) => (
+                  <li key={f} className="flex gap-2 items-start"><span className="text-green-500 flex-shrink-0 mt-0.5">✓</span>{f}</li>
+                ))}
+              </ul>
+              <Link href="/register" className="block w-full text-center py-2.5 bg-gray-900 text-white rounded text-sm font-semibold hover:bg-gray-700 transition-colors">
+                Hubungi Kami →
+              </Link>
+            </div>
           </div>
+
+          {/* Comparison note */}
+          <p className="text-center text-xs text-gray-400 mt-6">
+            Semua paket termasuk 7 hari trial gratis · Batalkan kapan saja · Pembayaran via QRIS, Transfer Bank, GoPay, OVO
+          </p>
 
           {/* Guarantee */}
           <div className="mt-6 flex items-start gap-4 p-5 bg-white border rounded-lg">
