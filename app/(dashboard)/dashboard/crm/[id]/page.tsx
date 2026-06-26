@@ -62,7 +62,7 @@ export default function ContactDetailPage() {
   }
 
   function addTag() {
-    if (!newTag.trim() || contact.tags.includes(newTag.trim())) return;
+    if (!newTag.trim() || contact?.tags.includes(newTag.trim())) return;
     setContact(c => c ? { ...c, tags: [...c.tags, newTag.trim()] } : c);
     setNewTag("");
     setAddingTag(false);
