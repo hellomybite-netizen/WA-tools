@@ -31,6 +31,7 @@ export const ROLE_NAV: Record<UserRole, { href: string; label: string; icon: str
     { href: "/dashboard/bio-link", label: "Bio Link", icon: "👤" },
     { href: "/dashboard/conversions", label: "Konversi", icon: "💰" },
     { href: "/dashboard/analytics", label: "Analytics", icon: "📊" },
+    { href: "/dashboard/crm", label: "CRM", icon: "🗂️" },
     { href: "/dashboard/wallet", label: "Wallet WA API", icon: "👛" },
     { href: "/dashboard/settings", label: "Pixel Settings", icon: "⚙️" },
   ],
@@ -41,11 +42,13 @@ export const ROLE_NAV: Record<UserRole, { href: string; label: string; icon: str
     { href: "/dashboard/bio-link", label: "Bio Link", icon: "👤" },
     { href: "/dashboard/conversions", label: "Konversi", icon: "💰" },
     { href: "/dashboard/analytics", label: "Analytics", icon: "📊" },
+    { href: "/dashboard/crm", label: "CRM", icon: "🗂️" },
     { href: "/dashboard/settings", label: "Pixel Settings", icon: "⚙️" },
   ],
   cs: [
     { href: "/dashboard/cs", label: "Antrian Chat", icon: "💬" },
     { href: "/dashboard/conversions", label: "Tandai Konversi", icon: "💰" },
+    { href: "/dashboard/crm", label: "CRM", icon: "🗂️" },
   ],
 };
 
