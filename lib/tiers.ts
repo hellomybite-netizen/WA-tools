@@ -45,7 +45,7 @@ export const TIER_FEATURES: Record<SubscriptionTier, TierFeatures> = {
     maxRotators: 2,
     maxBioLinks: 1,
     maxTeamMembers: 1,
-    metaCapi: false,
+    metaCapi: true,   // landing page: Starter dapat Meta CAPI
     multiCurrency: false,
     crm: false,
     wallet: false,
@@ -88,7 +88,6 @@ export const TIER_FEATURES: Record<SubscriptionTier, TierFeatures> = {
 export const FEATURE_TIER_GATE: Record<string, SubscriptionTier> = {
   crm: "pro",
   wallet: "pro",
-  metaCapi: "pro",
   multiCurrency: "pro",
   whiteLabel: "agency",
   multiWorkspace: "agency",

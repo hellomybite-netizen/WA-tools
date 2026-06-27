@@ -16,8 +16,9 @@ interface Props {
 
 // Features locked per nav item — maps href to feature key
 const NAV_TIER_GATES: Record<string, keyof typeof TIER_FEATURES["starter"]> = {
-  "/dashboard/crm":      "crm",
-  "/dashboard/wallet":   "wallet",
+  "/dashboard/crm":       "crm",
+  "/dashboard/wallet":    "wallet",
+  "/dashboard/analytics": "multiCurrency",
 };
 
 export default function DashboardShell({ children, serverRole, serverTier, userEmail, isDemo }: Props) {

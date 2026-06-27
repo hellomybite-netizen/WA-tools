@@ -242,6 +242,7 @@ export default function Home() {
                 {[
                   "Watermark WA Tools di Bio Link",
                   "Analytics multi-currency",
+                  "CRM (kontak & pipeline)",
                   "Wallet WA API",
                 ].map((f) => (
                   <li key={f} className="flex gap-2 items-start text-gray-300"><span className="flex-shrink-0 mt-0.5">✗</span>{f}</li>
@@ -272,6 +273,7 @@ export default function Home() {
                   "Analytics multi-currency (IDR, USD, HKD, TWD, MYR)",
                   "Analytics hingga 1 tahun",
                   "Conversion tracking + Meta CAPI otomatis",
+                  "CRM — kelola kontak, pipeline & notes",
                   "Wallet WA API (topup saldo untuk broadcast)",
                   "Export laporan Excel/PDF",
                   "Prioritas support via WhatsApp",
