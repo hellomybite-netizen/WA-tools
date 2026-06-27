@@ -2,8 +2,19 @@
 import { useState } from "react";
 import { toast } from "sonner";
 import { buildWhatsAppUrl } from "@/lib/utm";
+import { TIER_FEATURES } from "@/lib/tiers";
+import { useTier } from "@/lib/use-tier";
+
+// Demo: pretend 3 links already saved
+const DEMO_USED_LINKS = 3;
 
 export default function UrlGeneratorPage() {
+  const tier = useTier();
+  const features = TIER_FEATURES[tier];
+  const maxLinks = features.maxLinks;
+  const isUnlimited = maxLinks === "unlimited";
+  const nearLimit = !isUnlimited && DEMO_USED_LINKS >= (maxLinks as number) * 0.8;
+
   const [phone, setPhone] = useState("");
   const [message, setMessage] = useState("");
   const [utmSource, setUtmSource] = useState("");
@@ -37,7 +48,23 @@ export default function UrlGeneratorPage() {
   return (
     <div>
       <h1 className="text-2xl font-bold mb-1">URL Generator</h1>
-      <p className="text-gray-500 text-sm mb-8">Buat WhatsApp link dengan UTM tracking</p>
+      <p className="text-gray-500 text-sm mb-4">Buat WhatsApp link dengan UTM tracking</p>
+
+      {/* Tier limit banner */}
+      <div className={`mb-6 flex items-center justify-between px-4 py-3 rounded-lg text-sm border ${
+        nearLimit ? "bg-amber-50 border-amber-200 text-amber-800" : "bg-gray-50 border-gray-200 text-gray-600"
+      }`}>
+        <span>
+          Link tersimpan: <strong>{DEMO_USED_LINKS} / {isUnlimited ? "∞" : maxLinks}</strong>
+          {isUnlimited && <span className="ml-2 text-green-600 font-medium">Tidak terbatas</span>}
+        </span>
+        {!isUnlimited && (
+          <span className={nearLimit ? "text-amber-700 font-medium" : "text-gray-400"}>
+            {nearLimit ? "⚠ Hampir mencapai batas — " : ""}
+            Batas tier {tier.charAt(0).toUpperCase() + tier.slice(1)}: {maxLinks} link
+          </span>
+        )}
+      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="bg-white border rounded-lg p-6">

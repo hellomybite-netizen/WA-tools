@@ -34,6 +34,9 @@ export const ROLE_NAV: Record<UserRole, { href: string; label: string; icon: str
     { href: "/dashboard/crm", label: "CRM", icon: "🗂️" },
     { href: "/dashboard/wallet", label: "Wallet WA API", icon: "👛" },
     { href: "/dashboard/settings", label: "Pixel Settings", icon: "⚙️" },
+    { href: "/dashboard/workspace", label: "Multi-Workspace", icon: "🏢" },
+    { href: "/dashboard/white-label", label: "White Label", icon: "🎨" },
+    { href: "/dashboard/api-access", label: "API Access", icon: "🔌" },
   ],
   advertiser: [
     { href: "/dashboard", label: "Overview", icon: "▦" },
@@ -44,6 +47,9 @@ export const ROLE_NAV: Record<UserRole, { href: string; label: string; icon: str
     { href: "/dashboard/analytics", label: "Analytics", icon: "📊" },
     { href: "/dashboard/crm", label: "CRM", icon: "🗂️" },
     { href: "/dashboard/settings", label: "Pixel Settings", icon: "⚙️" },
+    { href: "/dashboard/workspace", label: "Multi-Workspace", icon: "🏢" },
+    { href: "/dashboard/white-label", label: "White Label", icon: "🎨" },
+    { href: "/dashboard/api-access", label: "API Access", icon: "🔌" },
   ],
   cs: [
     { href: "/dashboard/cs", label: "Antrian Chat", icon: "💬" },

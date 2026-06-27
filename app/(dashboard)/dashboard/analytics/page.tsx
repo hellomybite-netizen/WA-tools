@@ -4,6 +4,9 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, L
 import { CURRENCIES, CurrencyCode, formatCurrency, convertToUSD } from "@/lib/currencies";
 import DateFilter from "@/components/date-filter";
 import { DatePreset, DateRange, getDateRange, getGranularity, generateTicks, scaleDemoValue } from "@/lib/date-filter";
+import { TIER_FEATURES } from "@/lib/tiers";
+import { useTier } from "@/lib/use-tier";
+import { toast } from "sonner";
 
 // Base demo values (7-day baseline)
 const BASE_REVENUE: Record<CurrencyCode, { revenue: number; conversions: number; leads: number; spend: number }> = {
@@ -28,6 +31,9 @@ const CURRENCY_COLORS: Record<CurrencyCode, string> = {
 };
 
 export default function AnalyticsPage() {
+  const tier = useTier();
+  const canExport = TIER_FEATURES[tier].exportReports;
+
   const [activeCurrencies, setActiveCurrencies] = useState<CurrencyCode[]>(["IDR", "USD", "HKD", "TWD", "MYR"]);
   const [reportCurrency, setReportCurrency] = useState<CurrencyCode>("IDR");
   const [preset, setPreset] = useState<DatePreset>("7d");
@@ -36,6 +42,14 @@ export default function AnalyticsPage() {
   function handleDateChange(p: DatePreset, r: DateRange) {
     setPreset(p);
     setCustomRange(r);
+  }
+
+  function handleExport(format: "excel" | "pdf") {
+    if (!canExport) {
+      toast.error("Upgrade ke Pro untuk export laporan");
+      return;
+    }
+    toast.success(`Laporan ${format.toUpperCase()} sedang disiapkan... (demo)`);
   }
 
   const range = getDateRange(preset, customRange);
@@ -104,6 +118,31 @@ export default function AnalyticsPage() {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
+          {/* Export buttons */}
+          <div className="flex gap-2">
+            <button
+              onClick={() => handleExport("excel")}
+              title={canExport ? "Export ke Excel" : "Upgrade ke Pro untuk export"}
+              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded border transition-colors ${
+                canExport
+                  ? "border-green-300 text-green-700 bg-green-50 hover:bg-green-100"
+                  : "border-gray-200 text-gray-300 cursor-not-allowed"
+              }`}
+            >
+              📊 Excel {!canExport && "🔒"}
+            </button>
+            <button
+              onClick={() => handleExport("pdf")}
+              title={canExport ? "Export ke PDF" : "Upgrade ke Pro untuk export"}
+              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded border transition-colors ${
+                canExport
+                  ? "border-red-300 text-red-700 bg-red-50 hover:bg-red-100"
+                  : "border-gray-200 text-gray-300 cursor-not-allowed"
+              }`}
+            >
+              📄 PDF {!canExport && "🔒"}
+            </button>
+          </div>
           {/* Date filter */}
           <DateFilter preset={preset} customRange={customRange} onChange={handleDateChange} />
           {/* Currency toggle */}

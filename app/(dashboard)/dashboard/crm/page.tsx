@@ -6,6 +6,9 @@ import { DEMO_CONTACTS, CONTACT_STATUS, ContactStatus, Contact } from "@/lib/crm
 import { CURRENCIES, CurrencyCode, formatCurrency, convertToUSD } from "@/lib/currencies";
 import DateFilter from "@/components/date-filter";
 import { DatePreset, DateRange, getDateRange, getGranularity, generateTicks, scaleDemoValue, formatDateLabel } from "@/lib/date-filter";
+import { TIER_FEATURES } from "@/lib/tiers";
+import { useTier } from "@/lib/use-tier";
+import { toast } from "sonner";
 
 const SOURCE_COLORS: Record<string, string> = {
   instagram: "bg-pink-100 text-pink-700",
@@ -20,6 +23,14 @@ const BASE_CONVERSIONS  = 4;
 const BASE_PIPELINE_VALUE = 3_200_000; // IDR equivalent
 
 export default function CRMPage() {
+  const tier = useTier();
+  const canExport = TIER_FEATURES[tier].exportReports;
+
+  function handleExport(format: "excel" | "pdf") {
+    if (!canExport) { toast.error("Upgrade ke Pro untuk export laporan"); return; }
+    toast.success(`Laporan CRM ${format.toUpperCase()} sedang disiapkan... (demo)`);
+  }
+
   const [contacts] = useState<Contact[]>(DEMO_CONTACTS);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<ContactStatus | "all">("all");
@@ -102,6 +113,16 @@ export default function CRMPage() {
           <p className="text-gray-500 text-sm">Kelola kontak, pipeline deal, dan riwayat interaksi</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
+          <button
+            onClick={() => handleExport("excel")}
+            title={canExport ? "Export ke Excel" : "Upgrade ke Pro untuk export"}
+            className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded border transition-colors ${canExport ? "border-green-300 text-green-700 bg-green-50 hover:bg-green-100" : "border-gray-200 text-gray-300 cursor-not-allowed"}`}
+          >📊 Excel {!canExport && "🔒"}</button>
+          <button
+            onClick={() => handleExport("pdf")}
+            title={canExport ? "Export ke PDF" : "Upgrade ke Pro untuk export"}
+            className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded border transition-colors ${canExport ? "border-red-300 text-red-700 bg-red-50 hover:bg-red-100" : "border-gray-200 text-gray-300 cursor-not-allowed"}`}
+          >📄 PDF {!canExport && "🔒"}</button>
           <DateFilter preset={preset} customRange={customRange} onChange={handleDateChange} />
           {(["list","pipeline","analytics"] as const).map(v => (
             <button

@@ -16,8 +16,10 @@ const FEATURE_LABELS: Record<keyof TierFeatures, { title: string; description: s
   multiWorkspace:   { title: "Multi-Workspace",        description: "Kelola beberapa workspace klien dari satu dashboard terpusat" },
   apiAccess:        { title: "API Access",             description: "Akses REST API untuk integrasi dengan sistem Anda sendiri" },
   prioritySupport:  { title: "Priority Support",       description: "Dukungan tim via WhatsApp dengan respons < 2 jam" },
+  exportReports:    { title: "Export Laporan",         description: "Export data analytics dan CRM ke format Excel atau PDF" },
   maxLinks:         { title: "Link Unlimited",         description: "Buat WA link tanpa batas untuk semua kampanye iklan Anda" },
   maxRotators:      { title: "Chat Rotator Unlimited", description: "Buat grup rotasi tanpa batas untuk distribusi chat yang merata" },
+  maxCSPerRotator:  { title: "CS Unlimited per Rotator", description: "Tambahkan CS tak terbatas dalam satu rotator" },
   maxBioLinks:      { title: "Bio Link Unlimited",     description: "Buat halaman bio link tanpa batas untuk semua produk dan channel" },
   maxTeamMembers:   { title: "Tim Lebih Besar",        description: "Tambahkan lebih banyak anggota tim Advertiser dan CS" },
 };

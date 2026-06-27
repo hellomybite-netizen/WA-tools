@@ -27,12 +27,14 @@ export const TIERS = {
 export interface TierFeatures {
   maxLinks: number | "unlimited";
   maxRotators: number | "unlimited";
+  maxCSPerRotator: number | "unlimited";
   maxBioLinks: number | "unlimited";
   maxTeamMembers: number | "unlimited";
   metaCapi: boolean;
   multiCurrency: boolean;
   crm: boolean;
   wallet: boolean;
+  exportReports: boolean;
   whiteLabel: boolean;
   multiWorkspace: boolean;
   apiAccess: boolean;
@@ -43,12 +45,14 @@ export const TIER_FEATURES: Record<SubscriptionTier, TierFeatures> = {
   starter: {
     maxLinks: 10,
     maxRotators: 2,
+    maxCSPerRotator: 5,
     maxBioLinks: 1,
     maxTeamMembers: 1,
-    metaCapi: true,   // landing page: Starter dapat Meta CAPI
+    metaCapi: true,
     multiCurrency: false,
     crm: false,
     wallet: false,
+    exportReports: false,
     whiteLabel: false,
     multiWorkspace: false,
     apiAccess: false,
@@ -57,26 +61,30 @@ export const TIER_FEATURES: Record<SubscriptionTier, TierFeatures> = {
   pro: {
     maxLinks: "unlimited",
     maxRotators: "unlimited",
+    maxCSPerRotator: "unlimited",
     maxBioLinks: "unlimited",
     maxTeamMembers: 5,
     metaCapi: true,
     multiCurrency: true,
     crm: true,
     wallet: true,
+    exportReports: true,
     whiteLabel: false,
     multiWorkspace: false,
     apiAccess: false,
-    prioritySupport: false,
+    prioritySupport: true,
   },
   agency: {
     maxLinks: "unlimited",
     maxRotators: "unlimited",
+    maxCSPerRotator: "unlimited",
     maxBioLinks: "unlimited",
     maxTeamMembers: "unlimited",
     metaCapi: true,
     multiCurrency: true,
     crm: true,
     wallet: true,
+    exportReports: true,
     whiteLabel: true,
     multiWorkspace: true,
     apiAccess: true,
@@ -89,6 +97,7 @@ export const FEATURE_TIER_GATE: Record<string, SubscriptionTier> = {
   crm: "pro",
   wallet: "pro",
   multiCurrency: "pro",
+  exportReports: "pro",
   whiteLabel: "agency",
   multiWorkspace: "agency",
   apiAccess: "agency",

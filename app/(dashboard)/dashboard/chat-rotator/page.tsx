@@ -1,6 +1,8 @@
 "use client";
 import { useState } from "react";
 import { toast } from "sonner";
+import { TIER_FEATURES } from "@/lib/tiers";
+import { useTier } from "@/lib/use-tier";
 
 interface CSAgent {
   id: string;
@@ -9,7 +11,17 @@ interface CSAgent {
   active: boolean;
 }
 
+// Demo: pretend 1 rotator already saved (this page = rotator #1)
+const DEMO_ROTATOR_INDEX = 1;
+
 export default function ChatRotatorPage() {
+  const tier = useTier();
+  const features = TIER_FEATURES[tier];
+  const maxRotators = features.maxRotators;
+  const maxCS = features.maxCSPerRotator;
+  const unlimitedRotators = maxRotators === "unlimited";
+  const unlimitedCS = maxCS === "unlimited";
+
   const [agents, setAgents] = useState<CSAgent[]>([
     { id: "1", name: "CS Andi", phone: "628111111111", active: true },
     { id: "2", name: "CS Budi", phone: "628222222222", active: true },
@@ -25,6 +37,10 @@ export default function ChatRotatorPage() {
   function addAgent(e: React.FormEvent) {
     e.preventDefault();
     if (!newName || !newPhone) return;
+    if (!unlimitedCS && agents.length >= (maxCS as number)) {
+      toast.error(`Batas ${maxCS} CS per rotator untuk tier ini. Upgrade ke Pro untuk CS tak terbatas.`);
+      return;
+    }
     setAgents((prev) => [
       ...prev,
       { id: Date.now().toString(), name: newName, phone: newPhone, active: true },
@@ -53,7 +69,23 @@ export default function ChatRotatorPage() {
   return (
     <div>
       <h1 className="text-2xl font-bold mb-1">Chat Rotator</h1>
-      <p className="text-gray-500 text-sm mb-8">Distribusi chat ke CS secara bergiliran</p>
+      <p className="text-gray-500 text-sm mb-4">Distribusi chat ke CS secara bergiliran</p>
+
+      {/* Tier limit banner */}
+      <div className="mb-6 grid grid-cols-2 gap-3">
+        <div className="flex items-center justify-between px-4 py-3 rounded-lg text-sm border bg-gray-50 border-gray-200">
+          <span className="text-gray-500">Rotator aktif</span>
+          <span className="font-semibold text-gray-800">
+            {DEMO_ROTATOR_INDEX} / {unlimitedRotators ? <span className="text-green-600">∞</span> : maxRotators}
+          </span>
+        </div>
+        <div className="flex items-center justify-between px-4 py-3 rounded-lg text-sm border bg-gray-50 border-gray-200">
+          <span className="text-gray-500">CS di rotator ini</span>
+          <span className="font-semibold text-gray-800">
+            {agents.length} / {unlimitedCS ? <span className="text-green-600">∞</span> : maxCS}
+          </span>
+        </div>
+      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="space-y-4">
