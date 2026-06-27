@@ -1,0 +1,112 @@
+export type SubscriptionTier = "starter" | "pro" | "agency";
+
+export const TIERS = {
+  starter: {
+    label: "Starter",
+    price: 149_000,
+    color: "bg-gray-100 text-gray-700",
+    badge: "bg-gray-500",
+    ring: "ring-gray-300",
+  },
+  pro: {
+    label: "Pro",
+    price: 299_000,
+    color: "bg-blue-100 text-blue-700",
+    badge: "bg-blue-500",
+    ring: "ring-blue-400",
+  },
+  agency: {
+    label: "Agency",
+    price: 799_000,
+    color: "bg-purple-100 text-purple-700",
+    badge: "bg-purple-500",
+    ring: "ring-purple-400",
+  },
+} as const;
+
+export interface TierFeatures {
+  maxLinks: number | "unlimited";
+  maxRotators: number | "unlimited";
+  maxBioLinks: number | "unlimited";
+  maxTeamMembers: number | "unlimited";
+  metaCapi: boolean;
+  multiCurrency: boolean;
+  crm: boolean;
+  wallet: boolean;
+  whiteLabel: boolean;
+  multiWorkspace: boolean;
+  apiAccess: boolean;
+  prioritySupport: boolean;
+}
+
+export const TIER_FEATURES: Record<SubscriptionTier, TierFeatures> = {
+  starter: {
+    maxLinks: 10,
+    maxRotators: 2,
+    maxBioLinks: 1,
+    maxTeamMembers: 1,
+    metaCapi: false,
+    multiCurrency: false,
+    crm: false,
+    wallet: false,
+    whiteLabel: false,
+    multiWorkspace: false,
+    apiAccess: false,
+    prioritySupport: false,
+  },
+  pro: {
+    maxLinks: "unlimited",
+    maxRotators: "unlimited",
+    maxBioLinks: "unlimited",
+    maxTeamMembers: 5,
+    metaCapi: true,
+    multiCurrency: true,
+    crm: true,
+    wallet: true,
+    whiteLabel: false,
+    multiWorkspace: false,
+    apiAccess: false,
+    prioritySupport: false,
+  },
+  agency: {
+    maxLinks: "unlimited",
+    maxRotators: "unlimited",
+    maxBioLinks: "unlimited",
+    maxTeamMembers: "unlimited",
+    metaCapi: true,
+    multiCurrency: true,
+    crm: true,
+    wallet: true,
+    whiteLabel: true,
+    multiWorkspace: true,
+    apiAccess: true,
+    prioritySupport: true,
+  },
+};
+
+/** Pages/features locked per tier — returns the minimum tier required */
+export const FEATURE_TIER_GATE: Record<string, SubscriptionTier> = {
+  crm: "pro",
+  wallet: "pro",
+  metaCapi: "pro",
+  multiCurrency: "pro",
+  whiteLabel: "agency",
+  multiWorkspace: "agency",
+  apiAccess: "agency",
+  teamMembers: "pro",
+};
+
+export const TIER_ORDER: SubscriptionTier[] = ["starter", "pro", "agency"];
+
+export function tierSatisfies(current: SubscriptionTier, required: SubscriptionTier): boolean {
+  return TIER_ORDER.indexOf(current) >= TIER_ORDER.indexOf(required);
+}
+
+export function getUpgradeTier(current: SubscriptionTier): SubscriptionTier | null {
+  const idx = TIER_ORDER.indexOf(current);
+  return idx < TIER_ORDER.length - 1 ? TIER_ORDER[idx + 1] : null;
+}
+
+export function formatPrice(tier: SubscriptionTier): string {
+  return `Rp ${TIERS[tier].price.toLocaleString("id-ID")}`;
+}
