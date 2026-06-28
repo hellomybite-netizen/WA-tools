@@ -19,8 +19,21 @@ export async function POST(req: NextRequest) {
   const { rotatorId, name, phone } = await req.json();
   const db = serviceClient();
 
-  // Verify rotator belongs to user
-  const { data: rotator } = await db.from("rotators").select("id").eq("id", rotatorId).eq("user_id", user.id).single();
+  // Find rotator: by ID if provided, otherwise auto-pick user's first rotator
+  let rotator: { id: string } | null = null;
+  if (rotatorId) {
+    const { data } = await db.from("rotators").select("id").eq("id", rotatorId).eq("user_id", user.id).single();
+    rotator = data;
+  } else {
+    const { data } = await db.from("rotators").select("id").eq("user_id", user.id).order("created_at").limit(1).single();
+    rotator = data;
+    // Auto-create if none exists
+    if (!rotator) {
+      const slug = "rotator-" + Math.random().toString(36).slice(2, 8);
+      const { data: created } = await db.from("rotators").insert({ user_id: user.id, name: "Rotator Utama", slug }).select("id").single();
+      rotator = created;
+    }
+  }
   if (!rotator) return NextResponse.json({ error: "Rotator not found" }, { status: 404 });
 
   const { data: member, error } = await db
