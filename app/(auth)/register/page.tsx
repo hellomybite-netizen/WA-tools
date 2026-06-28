@@ -33,7 +33,7 @@ export default function RegisterPage() {
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
       <div className="w-full max-w-sm bg-white border rounded-lg p-8">
         <h1 className="text-xl font-bold mb-1">Buat Akun WA Tools</h1>
-        <p className="text-sm text-gray-500 mb-6">Gratis selamanya untuk fitur dasar</p>
+        <p className="text-sm text-gray-500 mb-6">Coba semua fitur gratis selama 7 hari — tidak perlu kartu kredit</p>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-sm font-medium mb-1">Email</label>

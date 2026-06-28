@@ -375,8 +375,8 @@ export default function Home() {
           </div>
           <p>© 2025 WA Tools. Semua hak dilindungi.</p>
           <div className="flex gap-4">
-            <a href="#" className="hover:text-gray-600 transition-colors">Privasi</a>
-            <a href="#" className="hover:text-gray-600 transition-colors">Syarat Layanan</a>
+            <a href="/privacy" className="hover:text-gray-600 transition-colors">Privasi</a>
+            <a href="/terms" className="hover:text-gray-600 transition-colors">Syarat Layanan</a>
             <Link href="/login" className="hover:text-gray-600 transition-colors">Masuk</Link>
           </div>
         </div>
