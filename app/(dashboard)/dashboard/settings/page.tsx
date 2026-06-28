@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase";
 
@@ -8,8 +8,27 @@ export default function SettingsPage() {
   const [metaAccessToken, setMetaAccessToken] = useState("");
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
+  const [loaded, setLoaded] = useState(false);
 
   const supabase = createClient();
+
+  useEffect(() => {
+    async function loadSettings() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data } = await supabase
+        .from("pixel_settings")
+        .select("meta_pixel_id, meta_access_token")
+        .eq("user_id", user.id)
+        .single();
+      if (data) {
+        setMetaPixelId(data.meta_pixel_id ?? "");
+        setMetaAccessToken(data.meta_access_token ?? "");
+      }
+      setLoaded(true);
+    }
+    loadSettings();
+  }, []); // eslint-disable-line
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
@@ -19,8 +38,10 @@ export default function SettingsPage() {
 
     const { error } = await supabase
       .from("pixel_settings")
-      .upsert({ user_id: user.id, meta_pixel_id: metaPixelId, meta_access_token: metaAccessToken })
-      .eq("user_id", user.id);
+      .upsert(
+        { user_id: user.id, meta_pixel_id: metaPixelId, meta_access_token: metaAccessToken, updated_at: new Date().toISOString() },
+        { onConflict: "user_id" }
+      );
 
     if (error) toast.error("Gagal menyimpan: " + error.message);
     else toast.success("Pengaturan pixel disimpan!");
