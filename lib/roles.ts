@@ -53,6 +53,7 @@ export const ROLE_NAV: Record<UserRole, { href: string; label: string; icon: str
   ],
   cs: [
     { href: "/dashboard/cs", label: "Antrian Chat", icon: "💬" },
+    { href: "/dashboard/inbox", label: "Inbox WABA", icon: "📨" },
     { href: "/dashboard/conversions", label: "Tandai Konversi", icon: "💰" },
     { href: "/dashboard/crm", label: "CRM", icon: "🗂️" },
   ],
