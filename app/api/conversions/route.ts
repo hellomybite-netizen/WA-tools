@@ -3,6 +3,12 @@ import { createServerSupabaseClient, isSupabaseConfiguredServer } from "@/lib/su
 import { createServerClient } from "@supabase/ssr";
 import { sendMetaCapiEvent } from "@/lib/meta-capi";
 
+const serviceClient = () => createServerClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  { cookies: { getAll: () => [], setAll: () => {} } }
+);
+
 // GET /api/conversions — load click_events with conversion status
 export async function GET() {
   if (!isSupabaseConfiguredServer()) return NextResponse.json({ clicks: [] });
@@ -11,8 +17,11 @@ export async function GET() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
+  // Use service role to bypass RLS for reliable reads
+  const db = serviceClient();
+
   // Load click events with link info
-  const { data: clicks } = await supabase
+  const { data: clicks } = await db
     .from("click_events")
     .select(`
       id, clicked_at, utm_source, utm_medium, utm_campaign, ip,
@@ -23,7 +32,7 @@ export async function GET() {
     .limit(100);
 
   // Load conversions for this user
-  const { data: conversions } = await supabase
+  const { data: conversions } = await db
     .from("conversions")
     .select("click_id, amount, currency, note, converted_at")
     .eq("user_id", user.id);
