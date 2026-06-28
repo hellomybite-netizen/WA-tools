@@ -12,7 +12,6 @@ const FEATURE_LABELS: Record<keyof TierFeatures, { title: string; description: s
   wallet:           { title: "Wallet WA API",          description: "Topup saldo dan gunakan WhatsApp Business API untuk pengiriman pesan otomatis" },
   metaCapi:         { title: "Meta Conversion API",    description: "Kirim event Lead & Purchase ke Meta secara server-side untuk tracking ROAS akurat" },
   multiCurrency:    { title: "Multi-Currency Analytics", description: "Pantau performa iklan dalam 5 mata uang (IDR, USD, HKD, TWD, MYR) dengan blended ROAS" },
-  whiteLabel:       { title: "White-Label",            description: "Branding kustom — logo, domain, dan warna sesuai brand Anda" },
   multiWorkspace:   { title: "Multi-Workspace",        description: "Kelola beberapa workspace klien dari satu dashboard terpusat" },
   apiAccess:        { title: "API Access",             description: "Akses REST API untuk integrasi dengan sistem Anda sendiri" },
   prioritySupport:  { title: "Priority Support",       description: "Dukungan tim via WhatsApp dengan respons < 2 jam" },

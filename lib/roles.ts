@@ -35,7 +35,6 @@ export const ROLE_NAV: Record<UserRole, { href: string; label: string; icon: str
     { href: "/dashboard/wallet", label: "Wallet WA API", icon: "👛" },
     { href: "/dashboard/settings", label: "Pixel Settings", icon: "⚙️" },
     { href: "/dashboard/workspace", label: "Multi-Workspace", icon: "🏢" },
-    { href: "/dashboard/white-label", label: "White Label", icon: "🎨" },
     { href: "/dashboard/api-access", label: "API Access", icon: "🔌" },
   ],
   advertiser: [
@@ -48,7 +47,6 @@ export const ROLE_NAV: Record<UserRole, { href: string; label: string; icon: str
     { href: "/dashboard/crm", label: "CRM", icon: "🗂️" },
     { href: "/dashboard/settings", label: "Pixel Settings", icon: "⚙️" },
     { href: "/dashboard/workspace", label: "Multi-Workspace", icon: "🏢" },
-    { href: "/dashboard/white-label", label: "White Label", icon: "🎨" },
     { href: "/dashboard/api-access", label: "API Access", icon: "🔌" },
   ],
   cs: [

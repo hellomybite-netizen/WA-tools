@@ -35,7 +35,6 @@ export interface TierFeatures {
   crm: boolean;
   wallet: boolean;
   exportReports: boolean;
-  whiteLabel: boolean;
   multiWorkspace: boolean;
   apiAccess: boolean;
   prioritySupport: boolean;
@@ -53,7 +52,6 @@ export const TIER_FEATURES: Record<SubscriptionTier, TierFeatures> = {
     crm: false,
     wallet: false,
     exportReports: false,
-    whiteLabel: false,
     multiWorkspace: false,
     apiAccess: false,
     prioritySupport: false,
@@ -69,7 +67,6 @@ export const TIER_FEATURES: Record<SubscriptionTier, TierFeatures> = {
     crm: true,
     wallet: true,
     exportReports: true,
-    whiteLabel: false,
     multiWorkspace: false,
     apiAccess: false,
     prioritySupport: true,
@@ -85,7 +82,6 @@ export const TIER_FEATURES: Record<SubscriptionTier, TierFeatures> = {
     crm: true,
     wallet: true,
     exportReports: true,
-    whiteLabel: true,
     multiWorkspace: true,
     apiAccess: true,
     prioritySupport: true,
@@ -98,7 +94,6 @@ export const FEATURE_TIER_GATE: Record<string, SubscriptionTier> = {
   wallet: "pro",
   multiCurrency: "pro",
   exportReports: "pro",
-  whiteLabel: "agency",
   multiWorkspace: "agency",
   apiAccess: "agency",
   teamMembers: "pro",
