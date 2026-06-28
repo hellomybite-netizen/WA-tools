@@ -19,6 +19,7 @@ const NAV_TIER_GATES: Record<string, keyof typeof TIER_FEATURES["starter"]> = {
   "/dashboard/crm":         "crm",
   "/dashboard/wallet":      "wallet",
   "/dashboard/analytics":   "multiCurrency",
+  "/dashboard/inbox":       "wallet",
   "/dashboard/workspace":   "multiWorkspace",
   "/dashboard/api-access":  "apiAccess",
 };
