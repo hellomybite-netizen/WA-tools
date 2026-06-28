@@ -294,13 +294,12 @@ export default function Home() {
                 <div className="flex items-end gap-1">
                   <span className="text-3xl font-bold">Rp 799.000</span>
                 </div>
-                <p className="text-gray-400 text-sm mt-0.5">/ bulan · Untuk agensi & reseller</p>
+                <p className="text-gray-400 text-sm mt-0.5">/ bulan · Untuk agensi & tim besar</p>
               </div>
               <ul className="space-y-2.5 text-sm text-gray-600 mb-6">
                 {[
                   "Semua fitur Pro",
                   "Multi-workspace (kelola banyak klien)",
-                  "White-label — logo & domain sendiri",
                   "Akses API untuk integrasi custom",
                   "Sub-akun untuk tim / klien",
                   "Laporan per klien otomatis",
