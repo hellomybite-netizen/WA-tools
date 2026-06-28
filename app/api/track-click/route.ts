@@ -6,12 +6,13 @@ export async function POST(req: NextRequest) {
   const { linkId, slug, utmSource, utmMedium, utmCampaign, fbclid, eventSourceUrl } = await req.json();
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  if (!supabaseUrl || supabaseUrl.includes("your_supabase")) {
+  const serviceKey  = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!supabaseUrl || supabaseUrl.includes("your_supabase") || !serviceKey) {
     return NextResponse.json({ ok: true, note: "supabase not configured" });
   }
 
-  const supabase = createServerClient(supabaseUrl, supabaseKey!, { cookies: { getAll: () => [], setAll: () => {} } });
+  // Use service role key to bypass RLS for anonymous click tracking
+  const supabase = createServerClient(supabaseUrl, serviceKey, { cookies: { getAll: () => [], setAll: () => {} } });
 
   const userIp = req.headers.get("x-forwarded-for")?.split(",")[0] ?? req.headers.get("x-real-ip") ?? undefined;
   const userAgent = req.headers.get("user-agent") ?? undefined;
