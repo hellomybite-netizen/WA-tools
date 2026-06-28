@@ -1,14 +1,13 @@
 "use client";
 import { useState, useMemo } from "react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line } from "recharts";
-import { CURRENCIES, CurrencyCode, formatCurrency, convertToUSD } from "@/lib/currencies";
+import { CURRENCIES, CurrencyCode, formatCurrency, convertTo, convertToUSD } from "@/lib/currencies";
 import DateFilter from "@/components/date-filter";
 import { DatePreset, DateRange, getDateRange, getGranularity, generateTicks, scaleDemoValue } from "@/lib/date-filter";
 import { TIER_FEATURES } from "@/lib/tiers";
 import { useTier } from "@/lib/use-tier";
 import { toast } from "sonner";
 
-// Base demo values (7-day baseline)
 const BASE_REVENUE: Record<CurrencyCode, { revenue: number; conversions: number; leads: number; spend: number }> = {
   IDR: { revenue: 12_400_000, conversions: 34, leads: 89,  spend: 2_100_000 },
   USD: { revenue: 4_280,      conversions: 18, leads: 52,  spend: 890 },
@@ -19,11 +18,13 @@ const BASE_REVENUE: Record<CurrencyCode, { revenue: number; conversions: number;
 
 const BASE_CLICKS: Record<CurrencyCode, number> = { IDR: 76, USD: 19, HKD: 12, TWD: 9, MYR: 8 };
 
-const BASE_SOURCES = [
-  { source: "Instagram", clicks: 215, pct: 38 },
-  { source: "TikTok",    clicks: 183, pct: 32 },
-  { source: "Facebook",  clicks: 98,  pct: 17 },
-  { source: "Langsung",  clicks: 73,  pct: 13 },
+// Channel performance demo data
+const BASE_CHANNELS = [
+  { channel: "TikTok Ads",    icon: "🎵", leads: 215, conversions: 28, spend_usd: 380 },
+  { channel: "Instagram Ads", icon: "📸", leads: 183, conversions: 22, spend_usd: 290 },
+  { channel: "Facebook Ads",  icon: "👤", leads: 98,  conversions: 10, spend_usd: 185 },
+  { channel: "Bio Link",      icon: "🔗", leads: 74,  conversions: 8,  spend_usd: 0   },
+  { channel: "Langsung",      icon: "💬", leads: 43,  conversions: 5,  spend_usd: 0   },
 ];
 
 const CURRENCY_COLORS: Record<CurrencyCode, string> = {
@@ -35,27 +36,20 @@ export default function AnalyticsPage() {
   const canExport = TIER_FEATURES[tier].exportReports;
 
   const [activeCurrencies, setActiveCurrencies] = useState<CurrencyCode[]>(["IDR", "USD", "HKD", "TWD", "MYR"]);
-  const [reportCurrency, setReportCurrency] = useState<CurrencyCode>("IDR");
-  const [preset, setPreset] = useState<DatePreset>("7d");
-  const [customRange, setCustomRange] = useState<DateRange>(getDateRange("7d"));
+  const [displayCurrency, setDisplayCurrency]   = useState<CurrencyCode>("IDR");
+  const [preset, setPreset]                     = useState<DatePreset>("7d");
+  const [customRange, setCustomRange]           = useState<DateRange>(getDateRange("7d"));
 
-  function handleDateChange(p: DatePreset, r: DateRange) {
-    setPreset(p);
-    setCustomRange(r);
-  }
+  function handleDateChange(p: DatePreset, r: DateRange) { setPreset(p); setCustomRange(r); }
 
   function handleExport(format: "excel" | "pdf") {
-    if (!canExport) {
-      toast.error("Upgrade ke Pro untuk export laporan");
-      return;
-    }
+    if (!canExport) { toast.error("Upgrade ke Pro untuk export laporan"); return; }
     toast.success(`Laporan ${format.toUpperCase()} sedang disiapkan... (demo)`);
   }
 
   const range = getDateRange(preset, customRange);
   const granularity = getGranularity(range);
 
-  // Scale demo data to match selected date range
   const revenueData = useMemo(() =>
     (Object.keys(BASE_REVENUE) as CurrencyCode[]).map(c => {
       const b = BASE_REVENUE[c];
@@ -70,13 +64,11 @@ export default function AnalyticsPage() {
     [preset, customRange] // eslint-disable-line
   );
 
-  // Chart data: clicks per tick per currency
   const ticks = useMemo(() => generateTicks(range, granularity), [preset, customRange]); // eslint-disable-line
   const clickChartData = useMemo(() =>
     ticks.map((tick, i) => {
       const row: Record<string, string | number> = { day: tick };
       (Object.keys(BASE_CLICKS) as CurrencyCode[]).forEach(c => {
-        // sine wave variation for demo realism
         const base = BASE_CLICKS[c] / (ticks.length / 7);
         row[c] = Math.max(0, Math.round(base * (0.6 + 0.8 * Math.abs(Math.sin(i * 0.9 + c.charCodeAt(0))))));
       });
@@ -85,84 +77,79 @@ export default function AnalyticsPage() {
     [ticks] // eslint-disable-line
   );
 
-  const sourceData = useMemo(() =>
-    BASE_SOURCES.map(s => ({
-      ...s,
-      clicks: scaleDemoValue(s.clicks, range, false),
-    })),
-    [preset, customRange] // eslint-disable-line
-  );
+  const activeData = revenueData.filter(r => activeCurrencies.includes(r.currency));
 
-  const totalRevenueUSD = revenueData
-    .filter(r => activeCurrencies.includes(r.currency))
-    .reduce((s, r) => s + convertToUSD(r.revenue, r.currency), 0);
-  const totalLeads = revenueData.filter(r => activeCurrencies.includes(r.currency)).reduce((s, r) => s + r.leads, 0);
-  const totalConversions = revenueData.filter(r => activeCurrencies.includes(r.currency)).reduce((s, r) => s + r.conversions, 0);
-  const totalSpendUSD = revenueData.filter(r => activeCurrencies.includes(r.currency)).reduce((s, r) => s + convertToUSD(r.spend, r.currency), 0);
-  const overallROAS = totalSpendUSD > 0 ? (totalRevenueUSD / totalSpendUSD).toFixed(1) : "—";
+  // All aggregates in displayCurrency
+  const totalRevenue    = activeData.reduce((s, r) => s + convertTo(r.revenue, r.currency, displayCurrency), 0);
+  const totalSpend      = activeData.reduce((s, r) => s + convertTo(r.spend,   r.currency, displayCurrency), 0);
+  const totalLeads      = activeData.reduce((s, r) => s + r.leads, 0);
+  const totalConversions = activeData.reduce((s, r) => s + r.conversions, 0);
+  const overallROAS     = totalSpend > 0 ? (totalRevenue / totalSpend).toFixed(1) : "—";
+
+  // Channel data scaled + revenue estimated via avg order value in displayCurrency
+  const avgOrderValue = totalConversions > 0 ? totalRevenue / totalConversions : 0;
+  const channelData = useMemo(() => BASE_CHANNELS.map(ch => {
+    const leads       = scaleDemoValue(ch.leads,       range, false);
+    const conversions = scaleDemoValue(ch.conversions, range, false);
+    const spendIDR    = ch.spend_usd * (1 / 0.000062);
+    const spend       = convertTo(scaleDemoValue(spendIDR, range, false), "IDR", displayCurrency);
+    const convRate    = leads > 0 ? ((conversions / leads) * 100).toFixed(0) : "0";
+    const roas        = spend > 0 ? ((conversions * avgOrderValue) / spend).toFixed(1) : "—";
+    return { ...ch, leads, conversions, spend, convRate, roas };
+  }), [preset, customRange, displayCurrency, avgOrderValue]); // eslint-disable-line
 
   const granularityLabel: Record<typeof granularity, string> = {
-    hour: "per jam",
-    day: "per hari",
-    week: "per minggu",
-    month: "per bulan",
+    hour: "per jam", day: "per hari", week: "per minggu", month: "per bulan",
   };
+
+  const dc = CURRENCIES[displayCurrency];
 
   return (
     <div>
+      {/* Header */}
       <div className="flex items-start justify-between mb-6 flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-bold mb-1">Analytics</h1>
-          <p className="text-gray-500 text-sm">
-            {granularityLabel[granularity]} · semua currency (data demo)
-          </p>
+          <p className="text-gray-500 text-sm">{granularityLabel[granularity]} · data demo</p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
-          {/* Export buttons */}
           <div className="flex gap-2">
-            <button
-              onClick={() => handleExport("excel")}
-              title={canExport ? "Export ke Excel" : "Upgrade ke Pro untuk export"}
-              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded border transition-colors ${
-                canExport
-                  ? "border-green-300 text-green-700 bg-green-50 hover:bg-green-100"
-                  : "border-gray-200 text-gray-300 cursor-not-allowed"
-              }`}
-            >
+            <button onClick={() => handleExport("excel")}
+              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded border transition-colors ${canExport ? "border-green-300 text-green-700 bg-green-50 hover:bg-green-100" : "border-gray-200 text-gray-300 cursor-not-allowed"}`}>
               📊 Excel {!canExport && "🔒"}
             </button>
-            <button
-              onClick={() => handleExport("pdf")}
-              title={canExport ? "Export ke PDF" : "Upgrade ke Pro untuk export"}
-              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded border transition-colors ${
-                canExport
-                  ? "border-red-300 text-red-700 bg-red-50 hover:bg-red-100"
-                  : "border-gray-200 text-gray-300 cursor-not-allowed"
-              }`}
-            >
+            <button onClick={() => handleExport("pdf")}
+              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded border transition-colors ${canExport ? "border-red-300 text-red-700 bg-red-50 hover:bg-red-100" : "border-gray-200 text-gray-300 cursor-not-allowed"}`}>
               📄 PDF {!canExport && "🔒"}
             </button>
           </div>
-          {/* Date filter */}
           <DateFilter preset={preset} customRange={customRange} onChange={handleDateChange} />
-          {/* Currency toggle */}
-          <div className="flex flex-wrap gap-2">
+
+          {/* Display currency — single selector, affects everything */}
+          <div className="flex items-center gap-2 border rounded px-3 py-1.5 bg-white">
+            <span className="text-xs text-gray-400 whitespace-nowrap">Tampilkan dalam</span>
+            <select value={displayCurrency} onChange={e => setDisplayCurrency(e.target.value as CurrencyCode)}
+              className="text-sm font-semibold focus:outline-none bg-transparent cursor-pointer">
+              {(Object.keys(CURRENCIES) as CurrencyCode[]).map(c => (
+                <option key={c} value={c}>{CURRENCIES[c].flag} {c}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Market filter */}
+          <div className="flex flex-wrap gap-1.5">
             {(Object.keys(CURRENCIES) as CurrencyCode[]).map(code => {
               const cur = CURRENCIES[code];
               const active = activeCurrencies.includes(code);
               return (
-                <button
-                  key={code}
+                <button key={code}
                   onClick={() => setActiveCurrencies(prev =>
-                    prev.includes(code) ? prev.filter(c => c !== code) : [...prev, code]
+                    prev.includes(code) ? (prev.length > 1 ? prev.filter(c => c !== code) : prev) : [...prev, code]
                   )}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded border text-sm font-medium transition-all ${
-                    active ? "text-white border-transparent" : "bg-white text-gray-400 border-gray-200"
-                  }`}
-                  style={active ? { backgroundColor: CURRENCY_COLORS[code], borderColor: CURRENCY_COLORS[code] } : {}}
-                >
-                  <span>{cur.flag}</span>
-                  <span>{code}</span>
+                  title={`${active ? "Sembunyikan" : "Tampilkan"} pasar ${cur.name}`}
+                  className={`flex items-center gap-1 px-2.5 py-1 rounded border text-xs font-medium transition-all ${active ? "text-white border-transparent" : "bg-white text-gray-400 border-gray-200"}`}
+                  style={active ? { backgroundColor: CURRENCY_COLORS[code], borderColor: CURRENCY_COLORS[code] } : {}}>
+                  <span>{cur.flag}</span><span>{code}</span>
                 </button>
               );
             })}
@@ -170,13 +157,13 @@ export default function AnalyticsPage() {
         </div>
       </div>
 
-      {/* Summary cards */}
+      {/* KPI cards — all in displayCurrency */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         {[
-          { label: "Total Revenue (≈ USD)", value: `$${totalRevenueUSD.toFixed(0)}`, sub: "semua currency" },
-          { label: "Total Leads",           value: totalLeads.toString(),             sub: "klik ke WA" },
-          { label: "Total Konversi",        value: totalConversions.toString(),       sub: `${totalLeads > 0 ? ((totalConversions/totalLeads)*100).toFixed(0) : 0}% rate` },
-          { label: "Blended ROAS",          value: `${overallROAS}x`,                sub: "≈ USD basis" },
+          { label: `Total Revenue (${dc.flag} ${displayCurrency})`, value: formatCurrency(totalRevenue, displayCurrency), sub: `${activeCurrencies.length} pasar aktif` },
+          { label: "Total Leads",       value: totalLeads.toString(),       sub: "klik ke WA" },
+          { label: "Total Konversi",    value: totalConversions.toString(), sub: `${totalLeads > 0 ? ((totalConversions/totalLeads)*100).toFixed(0) : 0}% conv. rate` },
+          { label: "Blended ROAS",      value: `${overallROAS}x`,           sub: `basis ${displayCurrency}` },
         ].map(s => (
           <div key={s.label} className="bg-white border rounded-lg p-4">
             <p className="text-xs text-gray-500 mb-1">{s.label}</p>
@@ -186,61 +173,46 @@ export default function AnalyticsPage() {
         ))}
       </div>
 
-      {/* Per-currency table */}
+      {/* Per-currency table — all converted to displayCurrency */}
       <div className="bg-white border rounded-lg overflow-hidden mb-6">
         <div className="px-5 py-4 border-b flex items-center justify-between">
-          <h2 className="font-semibold text-sm">Performa per Currency</h2>
-          <div className="flex items-center gap-2 text-sm">
-            <span className="text-gray-400 text-xs">Tampilkan dalam:</span>
-            <select
-              value={reportCurrency}
-              onChange={e => setReportCurrency(e.target.value as CurrencyCode)}
-              className="border rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-green-500"
-            >
-              {(Object.keys(CURRENCIES) as CurrencyCode[]).map(c => (
-                <option key={c} value={c}>{CURRENCIES[c].flag} {c}</option>
-              ))}
-            </select>
-          </div>
+          <h2 className="font-semibold text-sm">Performa per Pasar</h2>
+          <span className="text-xs text-gray-400">Semua nilai dalam {dc.flag} {dc.name} ({displayCurrency})</span>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-gray-50 border-b">
               <tr>
-                <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Currency</th>
-                <th className="text-right px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Leads</th>
-                <th className="text-right px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Konversi</th>
-                <th className="text-right px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Conv. Rate</th>
-                <th className="text-right px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Ad Spend</th>
-                <th className="text-right px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Revenue</th>
-                <th className="text-right px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">ROAS</th>
+                {["Pasar", "Leads", "Konversi", "Conv. Rate", `Ad Spend (${displayCurrency})`, `Revenue (${displayCurrency})`, "ROAS"].map(h => (
+                  <th key={h} className={`px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide ${h === "Pasar" ? "text-left" : "text-right"}`}>{h}</th>
+                ))}
               </tr>
             </thead>
             <tbody className="divide-y">
-              {revenueData.filter(r => activeCurrencies.includes(r.currency)).map(row => {
+              {activeData.map(row => {
                 const cur = CURRENCIES[row.currency];
-                const roas = row.spend > 0 ? (row.revenue / row.spend).toFixed(1) : "—";
+                const rev   = convertTo(row.revenue, row.currency, displayCurrency);
+                const spend = convertTo(row.spend,   row.currency, displayCurrency);
+                const roas  = spend > 0 ? (rev / spend).toFixed(1) : "—";
                 const convRate = row.leads > 0 ? ((row.conversions / row.leads) * 100).toFixed(0) : "0";
                 return (
                   <tr key={row.currency} className="hover:bg-gray-50">
-                    <td className="px-5 py-3">
+                    <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
-                        <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: CURRENCY_COLORS[row.currency] }} />
-                        <span className="font-medium text-gray-800">{cur.flag} {cur.name}</span>
+                        <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: CURRENCY_COLORS[row.currency] }} />
+                        <span className="font-medium">{cur.flag} {cur.name}</span>
                         <span className="text-xs text-gray-400">({row.currency})</span>
                       </div>
                     </td>
                     <td className="px-4 py-3 text-right text-gray-700">{row.leads}</td>
                     <td className="px-4 py-3 text-right text-gray-700">{row.conversions}</td>
                     <td className="px-4 py-3 text-right">
-                      <span className={`text-xs font-medium px-2 py-0.5 rounded ${Number(convRate) >= 30 ? "bg-green-100 text-green-700" : "bg-yellow-100 text-yellow-700"}`}>
-                        {convRate}%
-                      </span>
+                      <span className={`text-xs font-medium px-2 py-0.5 rounded ${Number(convRate) >= 30 ? "bg-green-100 text-green-700" : "bg-yellow-100 text-yellow-700"}`}>{convRate}%</span>
                     </td>
-                    <td className="px-4 py-3 text-right text-gray-600 font-mono text-xs">{formatCurrency(row.spend, row.currency)}</td>
-                    <td className="px-4 py-3 text-right font-semibold text-gray-900 font-mono text-xs">{formatCurrency(row.revenue, row.currency)}</td>
+                    <td className="px-4 py-3 text-right text-gray-600 font-mono text-xs">{formatCurrency(spend, displayCurrency)}</td>
+                    <td className="px-4 py-3 text-right font-semibold font-mono text-xs">{formatCurrency(rev, displayCurrency)}</td>
                     <td className="px-4 py-3 text-right">
-                      <span className={`font-bold text-sm ${Number(roas) >= 3 ? "text-green-600" : "text-red-500"}`}>{roas}x</span>
+                      <span className={`font-bold ${Number(roas) >= 3 ? "text-green-600" : "text-red-500"}`}>{roas}x</span>
                     </td>
                   </tr>
                 );
@@ -248,7 +220,7 @@ export default function AnalyticsPage() {
             </tbody>
             <tfoot className="bg-gray-50 border-t-2">
               <tr>
-                <td className="px-5 py-3 font-semibold text-gray-700 text-xs uppercase tracking-wide">Total (≈ USD)</td>
+                <td className="px-4 py-3 font-semibold text-gray-700 text-xs uppercase tracking-wide">Total</td>
                 <td className="px-4 py-3 text-right font-semibold">{totalLeads}</td>
                 <td className="px-4 py-3 text-right font-semibold">{totalConversions}</td>
                 <td className="px-4 py-3 text-right">
@@ -256,8 +228,8 @@ export default function AnalyticsPage() {
                     {totalLeads > 0 ? ((totalConversions/totalLeads)*100).toFixed(0) : 0}%
                   </span>
                 </td>
-                <td className="px-4 py-3 text-right font-semibold font-mono text-xs">${totalSpendUSD.toFixed(0)}</td>
-                <td className="px-4 py-3 text-right font-bold font-mono text-xs">${totalRevenueUSD.toFixed(0)}</td>
+                <td className="px-4 py-3 text-right font-semibold font-mono text-xs">{formatCurrency(totalSpend, displayCurrency)}</td>
+                <td className="px-4 py-3 text-right font-bold font-mono text-xs">{formatCurrency(totalRevenue, displayCurrency)}</td>
                 <td className="px-4 py-3 text-right font-bold text-green-600">{overallROAS}x</td>
               </tr>
             </tfoot>
@@ -265,10 +237,53 @@ export default function AnalyticsPage() {
         </div>
       </div>
 
+      {/* Channel performance table */}
+      <div className="bg-white border rounded-lg overflow-hidden mb-6">
+        <div className="px-5 py-4 border-b flex items-center justify-between">
+          <h2 className="font-semibold text-sm">Performa per Channel Iklan</h2>
+          <span className="text-xs text-gray-400">Nilai dalam {dc.flag} {displayCurrency}</span>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-gray-50 border-b">
+              <tr>
+                {["Channel", "Leads", "Konversi", "Conv. Rate", `Ad Spend (${displayCurrency})`, "ROAS"].map(h => (
+                  <th key={h} className={`px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide ${h === "Channel" ? "text-left" : "text-right"}`}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y">
+              {channelData.map(ch => (
+                <tr key={ch.channel} className="hover:bg-gray-50">
+                  <td className="px-4 py-3">
+                    <span className="mr-1.5">{ch.icon}</span>
+                    <span className="font-medium">{ch.channel}</span>
+                    {ch.spend_usd === 0 && <span className="ml-2 text-xs text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded">organik</span>}
+                  </td>
+                  <td className="px-4 py-3 text-right text-gray-700">{ch.leads}</td>
+                  <td className="px-4 py-3 text-right text-gray-700">{ch.conversions}</td>
+                  <td className="px-4 py-3 text-right">
+                    <span className={`text-xs font-medium px-2 py-0.5 rounded ${Number(ch.convRate) >= 12 ? "bg-green-100 text-green-700" : "bg-yellow-100 text-yellow-700"}`}>{ch.convRate}%</span>
+                  </td>
+                  <td className="px-4 py-3 text-right text-gray-600 font-mono text-xs">
+                    {ch.spend > 0 ? formatCurrency(ch.spend, displayCurrency) : <span className="text-gray-300">—</span>}
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    {ch.roas !== "—"
+                      ? <span className={`font-bold ${Number(ch.roas) >= 3 ? "text-green-600" : "text-red-500"}`}>{ch.roas}x</span>
+                      : <span className="text-gray-300 text-xs">organik</span>}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
       {/* Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="bg-white border rounded-lg p-5">
-          <h2 className="font-semibold mb-1 text-sm">Klik per {granularityLabel[granularity].replace("per ", "")} per Currency</h2>
+          <h2 className="font-semibold mb-1 text-sm">Klik per {granularityLabel[granularity].replace("per ", "")} per Pasar</h2>
           <p className="text-xs text-gray-400 mb-4">{ticks.length} titik data</p>
           <ResponsiveContainer width="100%" height={200}>
             <LineChart data={clickChartData}>
@@ -283,39 +298,20 @@ export default function AnalyticsPage() {
         </div>
 
         <div className="bg-white border rounded-lg p-5">
-          <h2 className="font-semibold mb-1 text-sm">Revenue per Currency (≈ USD)</h2>
+          <h2 className="font-semibold mb-1 text-sm">Revenue per Pasar ({dc.flag} {displayCurrency})</h2>
           <p className="text-xs text-gray-400 mb-4">Periode yang dipilih</p>
           <ResponsiveContainer width="100%" height={200}>
-            <BarChart
-              data={revenueData.filter(r => activeCurrencies.includes(r.currency)).map(r => ({
-                name: `${CURRENCIES[r.currency].flag} ${r.currency}`,
-                usd: Math.round(convertToUSD(r.revenue, r.currency)),
-                fill: CURRENCY_COLORS[r.currency],
-              }))}
-            >
+            <BarChart data={activeData.map(r => ({
+              name: `${CURRENCIES[r.currency].flag} ${r.currency}`,
+              val: Math.round(convertTo(r.revenue, r.currency, displayCurrency)),
+              fill: CURRENCY_COLORS[r.currency],
+            }))}>
               <XAxis dataKey="name" tick={{ fontSize: 11 }} />
-              <YAxis tick={{ fontSize: 11 }} width={40} tickFormatter={v => `$${v}`} />
-              <Tooltip formatter={v => [`$${v}`, "Revenue (USD)"]} />
-              <Bar dataKey="usd" radius={[3, 3, 0, 0]} fill="#16a34a" />
+              <YAxis tick={{ fontSize: 11 }} width={50} tickFormatter={v => formatCurrency(v, displayCurrency).split(" ")[0] + " " + (v >= 1_000_000 ? (v/1_000_000).toFixed(1)+"M" : v >= 1_000 ? (v/1_000).toFixed(0)+"K" : v)} />
+              <Tooltip formatter={(v) => [formatCurrency(Number(v ?? 0), displayCurrency), "Revenue"]} />
+              <Bar dataKey="val" radius={[3, 3, 0, 0]} fill="#16a34a" />
             </BarChart>
           </ResponsiveContainer>
-        </div>
-      </div>
-
-      {/* Source breakdown */}
-      <div className="bg-white border rounded-lg p-5">
-        <h2 className="font-semibold mb-4 text-sm">Sumber Traffic</h2>
-        <div className="space-y-3">
-          {sourceData.map(s => (
-            <div key={s.source} className="flex items-center gap-3">
-              <span className="text-sm w-24 text-gray-600">{s.source}</span>
-              <div className="flex-1 bg-gray-100 rounded-full h-2 overflow-hidden">
-                <div className="h-full bg-green-500 rounded-full" style={{ width: `${s.pct}%` }} />
-              </div>
-              <span className="text-sm text-gray-500 w-10 text-right">{s.clicks}</span>
-              <span className="text-xs text-gray-400 w-8">{s.pct}%</span>
-            </div>
-          ))}
         </div>
       </div>
     </div>

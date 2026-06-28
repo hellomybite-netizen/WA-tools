@@ -34,3 +34,9 @@ export const RATES_TO_USD: Record<CurrencyCode, number> = {
 export function convertToUSD(amount: number, from: CurrencyCode): number {
   return amount * RATES_TO_USD[from];
 }
+
+export function convertTo(amount: number, from: CurrencyCode, to: CurrencyCode): number {
+  if (from === to) return amount;
+  const usd = amount * RATES_TO_USD[from];
+  return usd / RATES_TO_USD[to];
+}
