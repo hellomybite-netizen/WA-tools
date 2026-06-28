@@ -2,66 +2,88 @@
 import { useEffect, useState } from "react";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
 import type { ScheduleCheckResult } from "@/lib/schedule";
+import { buildWhatsAppUrl } from "@/lib/utm";
 
 export default function RedirectPage() {
   const params       = useParams();
   const searchParams = useSearchParams();
   const router       = useRouter();
   const slug         = params.slug as string;
-
   const [status, setStatus] = useState<"checking" | "open" | "closed">("checking");
   const [schedule, setSchedule] = useState<ScheduleCheckResult | null>(null);
 
   useEffect(() => {
+    // UTM params may be appended by ad platforms at click time
     const utmSource   = searchParams.get("utm_source")   ?? undefined;
     const utmMedium   = searchParams.get("utm_medium")   ?? undefined;
     const utmCampaign = searchParams.get("utm_campaign") ?? undefined;
     const fbclid      = searchParams.get("fbclid")       ?? undefined;
-    const target      = searchParams.get("target");
-    const waUrl       = target ?? `https://wa.me/?text=Halo`;
 
     async function run() {
-      // 1. Check schedule server-side (timezone-safe)
+      // 1. Lookup link from DB
+      let waUrl = `https://wa.me/?text=Halo`;
+      let linkId: string | null = null;
+
+      try {
+        const res = await fetch(`/api/links/${encodeURIComponent(slug)}`);
+        if (res.ok) {
+          const { link } = await res.json();
+          linkId = link.id;
+          // UTM from DB, but runtime UTM from URL overrides (for ad platform appending)
+          waUrl = buildWhatsAppUrl(
+            link.destination_phone,
+            link.message ?? "",
+          );
+        }
+      } catch {
+        // fall through with default URL
+      }
+
+      // 2. Check schedule
       let schedResult: ScheduleCheckResult | null = null;
       try {
         const res = await fetch(`/api/check-schedule?slug=${encodeURIComponent(slug)}`);
         schedResult = await res.json();
-      } catch {
-        // network error → fail open (redirect anyway)
-      }
+      } catch { /* fail open */ }
 
-      // 2. Track click (fire-and-forget)
+      // 3. Track click (fire-and-forget)
       fetch("/api/track-click", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ slug, utmSource, utmMedium, utmCampaign, fbclid, eventSourceUrl: window.location.href }),
+        body: JSON.stringify({
+          linkId,
+          slug,
+          utmSource:   utmSource,
+          utmMedium:   utmMedium,
+          utmCampaign: utmCampaign,
+          fbclid,
+          eventSourceUrl: window.location.href,
+        }),
       }).catch(() => {});
 
+      // 4. Handle schedule
       if (schedResult && !schedResult.isOpen) {
         setSchedule(schedResult);
         setStatus("closed");
 
         if (schedResult.mode === "redirect") {
-          // Show the /closed page
-          const q = new URLSearchParams({ message: schedResult.closedMessage });
-          router.replace(`/closed?${q.toString()}`);
+          router.replace(`/closed?message=${encodeURIComponent(schedResult.closedMessage)}`);
           return;
         }
-
         if (schedResult.mode === "fallback" && schedResult.fallbackPhone) {
-          // Redirect to fallback CS number
           const fallbackUrl = `https://wa.me/${schedResult.fallbackPhone.replace(/\D/g, "")}?text=${encodeURIComponent(schedResult.closedMessage)}`;
           setTimeout(() => { window.location.href = fallbackUrl; }, 600);
           return;
         }
-
-        // mode === "message": open WA with closed message pre-filled
-        const msgUrl = `https://wa.me/${waUrl.replace("https://wa.me/", "").split("?")[0]}?text=${encodeURIComponent(schedResult.closedMessage)}`;
-        setTimeout(() => { window.location.href = msgUrl; }, 1200);
+        // mode=message: open WA with closed message
+        const phone = waUrl.replace("https://wa.me/", "").split("?")[0];
+        setTimeout(() => {
+          window.location.href = `https://wa.me/${phone}?text=${encodeURIComponent(schedResult!.closedMessage)}`;
+        }, 1200);
         return;
       }
 
-      // Schedule is open (or not configured) — normal redirect
+      // 5. Normal redirect
       setStatus("open");
       setTimeout(() => { window.location.href = waUrl; }, 300);
     }
@@ -69,7 +91,7 @@ export default function RedirectPage() {
     run();
   }, [slug, searchParams, router]);
 
-  if (status === "closed" && schedule && schedule.mode === "message") {
+  if (status === "closed" && schedule?.mode === "message") {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 px-4">
         <div className="max-w-sm w-full bg-white border rounded-2xl p-8 text-center shadow-sm">
@@ -94,7 +116,7 @@ export default function RedirectPage() {
           </svg>
         </div>
         <p className="text-gray-600 text-sm">
-          {status === "checking" ? "Memeriksa jadwal operasional..." : "Membuka WhatsApp..."}
+          {status === "checking" ? "Memuat link..." : "Membuka WhatsApp..."}
         </p>
       </div>
     </div>
