@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createServerSupabaseClient, isSupabaseConfiguredServer } from "@/lib/supabase-server";
+import { getAuthUser, isSupabaseConfiguredServer } from "@/lib/supabase-server";
 import { createServerClient } from "@supabase/ssr";
 import { sendMetaCapiEvent } from "@/lib/meta-capi";
 
@@ -13,8 +13,7 @@ const serviceClient = () => createServerClient(
 export async function GET() {
   if (!isSupabaseConfiguredServer()) return NextResponse.json({ clicks: [] });
 
-  const supabase = await createServerSupabaseClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getAuthUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   // Use service role to bypass RLS for reliable reads
@@ -60,15 +59,15 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   if (!isSupabaseConfiguredServer()) return NextResponse.json({ error: "Not configured" }, { status: 503 });
 
-  const supabase = await createServerSupabaseClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getAuthUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { clickId, amount, currency = "IDR", note } = await req.json();
   if (!clickId || !amount) return NextResponse.json({ error: "clickId and amount required" }, { status: 400 });
 
   // Get click to verify ownership + get fbclid/ip/ua
-  const { data: click } = await supabase
+  const db = serviceClient();
+  const { data: click } = await db
     .from("click_events")
     .select("id, user_id, ip, user_agent, utm_source, link_id")
     .eq("id", clickId)
@@ -78,7 +77,7 @@ export async function POST(req: NextRequest) {
   if (!click) return NextResponse.json({ error: "Click not found" }, { status: 404 });
 
   // Save conversion
-  const { data: conversion, error } = await supabase
+  const { data: conversion, error } = await db
     .from("conversions")
     .insert({
       user_id: user.id,

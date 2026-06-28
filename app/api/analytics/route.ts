@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
-import { createServerSupabaseClient, isSupabaseConfiguredServer } from "@/lib/supabase-server";
+import { getAuthUser, isSupabaseConfiguredServer } from "@/lib/supabase-server";
 
 const serviceClient = () => createServerClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -11,8 +11,7 @@ const serviceClient = () => createServerClient(
 export async function GET(req: NextRequest) {
   if (!isSupabaseConfiguredServer()) return NextResponse.json({ configured: false });
 
-  const authClient = await createServerSupabaseClient();
-  const { data: { user } } = await authClient.auth.getUser();
+  const user = await getAuthUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { searchParams } = req.nextUrl;

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
-import { createServerSupabaseClient, isSupabaseConfiguredServer } from "@/lib/supabase-server";
+import { getAuthUser, isSupabaseConfiguredServer } from "@/lib/supabase-server";
 
 const serviceClient = () => createServerClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -12,8 +12,7 @@ const serviceClient = () => createServerClient(
 export async function POST(req: NextRequest) {
   if (!isSupabaseConfiguredServer()) return NextResponse.json({ error: "Not configured" }, { status: 503 });
 
-  const auth = await createServerSupabaseClient();
-  const { data: { user } } = await auth.auth.getUser();
+  const user = await getAuthUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { rotatorId, name, phone } = await req.json();
@@ -50,8 +49,7 @@ export async function POST(req: NextRequest) {
 export async function PATCH(req: NextRequest) {
   if (!isSupabaseConfiguredServer()) return NextResponse.json({ error: "Not configured" }, { status: 503 });
 
-  const auth = await createServerSupabaseClient();
-  const { data: { user } } = await auth.auth.getUser();
+  const user = await getAuthUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { memberId, active } = await req.json();
@@ -71,8 +69,7 @@ export async function PATCH(req: NextRequest) {
 export async function DELETE(req: NextRequest) {
   if (!isSupabaseConfiguredServer()) return NextResponse.json({ error: "Not configured" }, { status: 503 });
 
-  const auth = await createServerSupabaseClient();
-  const { data: { user } } = await auth.auth.getUser();
+  const user = await getAuthUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const memberId = req.nextUrl.searchParams.get("id");

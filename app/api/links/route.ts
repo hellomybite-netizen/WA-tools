@@ -1,5 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createServerSupabaseClient, isSupabaseConfiguredServer } from "@/lib/supabase-server";
+import { createServerClient } from "@supabase/ssr";
+import { getAuthUser, isSupabaseConfiguredServer } from "@/lib/supabase-server";
+
+const serviceClient = () => createServerClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  { cookies: { getAll: () => [], setAll: () => {} } }
+);
 
 function randomSlug() {
   return Math.random().toString(36).slice(2, 8);
@@ -9,11 +16,11 @@ function randomSlug() {
 export async function GET() {
   if (!isSupabaseConfiguredServer()) return NextResponse.json({ links: [] });
 
-  const supabase = await createServerSupabaseClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getAuthUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { data: links } = await supabase
+  const db = serviceClient();
+  const { data: links } = await db
     .from("links")
     .select("*")
     .eq("user_id", user.id)
@@ -26,8 +33,7 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   if (!isSupabaseConfiguredServer()) return NextResponse.json({ error: "Supabase not configured" }, { status: 503 });
 
-  const supabase = await createServerSupabaseClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getAuthUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await req.json();
@@ -35,22 +41,21 @@ export async function POST(req: NextRequest) {
 
   if (!destination_phone) return NextResponse.json({ error: "destination_phone required" }, { status: 400 });
 
-  // Generate unique slug
+  const db = serviceClient();
   let slug = randomSlug();
   for (let i = 0; i < 5; i++) {
-    const { data: existing } = await supabase.from("links").select("id").eq("slug", slug).single();
+    const { data: existing } = await db.from("links").select("id").eq("slug", slug).single();
     if (!existing) break;
     slug = randomSlug();
   }
 
-  const { data: link, error } = await supabase
+  const { data: link, error } = await db
     .from("links")
     .insert({ user_id: user.id, slug, label, destination_phone, message, utm_source, utm_medium, utm_campaign })
     .select()
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-
   return NextResponse.json({ link });
 }
 
@@ -58,13 +63,13 @@ export async function POST(req: NextRequest) {
 export async function DELETE(req: NextRequest) {
   if (!isSupabaseConfiguredServer()) return NextResponse.json({ error: "Not configured" }, { status: 503 });
 
-  const supabase = await createServerSupabaseClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getAuthUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const id = req.nextUrl.searchParams.get("id");
   if (!id) return NextResponse.json({ error: "id required" }, { status: 400 });
 
-  await supabase.from("links").delete().eq("id", id).eq("user_id", user.id);
+  const db = serviceClient();
+  await db.from("links").delete().eq("id", id).eq("user_id", user.id);
   return NextResponse.json({ ok: true });
 }

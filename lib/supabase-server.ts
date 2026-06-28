@@ -32,3 +32,32 @@ export async function createServerSupabaseClient() {
     }
   )
 }
+
+// Reliably get the authenticated user by reading JWT from cookie and
+// verifying it with the service role key. Works with new sb_publishable_ keys.
+export async function getAuthUser() {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const serviceKey  = process.env.SUPABASE_SERVICE_ROLE_KEY
+  if (!supabaseUrl || !serviceKey) return null
+
+  const cookieStore = await cookies()
+  const allCookies  = cookieStore.getAll()
+
+  // Find the Supabase auth session cookie (sb-<ref>-auth-token)
+  const authCookie = allCookies.find(c => /sb-.+-auth-token$/.test(c.name))
+  if (!authCookie) return null
+
+  try {
+    let parsed = JSON.parse(decodeURIComponent(authCookie.value))
+    // Supabase chunked cookies are arrays; take first chunk
+    if (Array.isArray(parsed)) parsed = JSON.parse(parsed.join(''))
+    const accessToken: string | undefined = parsed?.access_token
+    if (!accessToken) return null
+
+    const db = createServerClient(supabaseUrl, serviceKey, { cookies: { getAll: () => [], setAll: () => {} } })
+    const { data: { user } } = await db.auth.getUser(accessToken)
+    return user ?? null
+  } catch {
+    return null
+  }
+}
