@@ -127,6 +127,57 @@ export default function SettingsPage() {
               Access Token disimpan terenkripsi dan tidak pernah ditampilkan di frontend. Jangan share token ini ke siapapun.
             </p>
           </div>
+
+          {/* Panduan */}
+          <div className="bg-white border rounded-lg p-6">
+            <h2 className="font-semibold mb-4">Cara Mendapatkan Pixel ID & CAPI Token</h2>
+
+            <div className="space-y-5">
+              {/* Step 1 */}
+              <div>
+                <p className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-2">Langkah 1 — Buat Meta Pixel</p>
+                <ol className="space-y-1.5 text-sm text-gray-600">
+                  <li className="flex gap-2"><span className="text-gray-300 font-mono text-xs mt-0.5">1.</span>Buka <strong>business.facebook.com</strong> → login dengan akun Facebook bisnis Anda</li>
+                  <li className="flex gap-2"><span className="text-gray-300 font-mono text-xs mt-0.5">2.</span>Klik menu <strong>Events Manager</strong> (ikon petir di sidebar kiri)</li>
+                  <li className="flex gap-2"><span className="text-gray-300 font-mono text-xs mt-0.5">3.</span>Klik tombol <strong>+ Hubungkan Sumber Data</strong> → pilih <strong>Web</strong></li>
+                  <li className="flex gap-2"><span className="text-gray-300 font-mono text-xs mt-0.5">4.</span>Pilih <strong>Meta Pixel</strong> → beri nama pixel (misal: "WA Tools Pixel") → klik <strong>Buat Pixel</strong></li>
+                  <li className="flex gap-2"><span className="text-gray-300 font-mono text-xs mt-0.5">5.</span>Pixel ID muncul di bagian atas (15 digit angka) — copy dan paste ke kolom <strong>Meta Pixel ID</strong> di atas</li>
+                </ol>
+              </div>
+
+              <div className="border-t" />
+
+              {/* Step 2 */}
+              <div>
+                <p className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-2">Langkah 2 — Generate CAPI Access Token</p>
+                <ol className="space-y-1.5 text-sm text-gray-600">
+                  <li className="flex gap-2"><span className="text-gray-300 font-mono text-xs mt-0.5">1.</span>Di Events Manager, klik pixel yang baru dibuat</li>
+                  <li className="flex gap-2"><span className="text-gray-300 font-mono text-xs mt-0.5">2.</span>Klik tab <strong>Pengaturan</strong> (Settings)</li>
+                  <li className="flex gap-2"><span className="text-gray-300 font-mono text-xs mt-0.5">3.</span>Scroll ke bawah ke bagian <strong>Conversions API</strong></li>
+                  <li className="flex gap-2"><span className="text-gray-300 font-mono text-xs mt-0.5">4.</span>Klik <strong>Buat Token Akses</strong> (Generate Access Token)</li>
+                  <li className="flex gap-2"><span className="text-gray-300 font-mono text-xs mt-0.5">5.</span>Copy token yang muncul (dimulai dengan <span className="font-mono bg-gray-100 px-1 rounded text-xs">EAA...</span>) → paste ke kolom <strong>CAPI Access Token</strong> di atas</li>
+                </ol>
+              </div>
+
+              <div className="border-t" />
+
+              {/* Step 3 */}
+              <div>
+                <p className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-2">Langkah 3 — Verifikasi</p>
+                <ol className="space-y-1.5 text-sm text-gray-600">
+                  <li className="flex gap-2"><span className="text-gray-300 font-mono text-xs mt-0.5">1.</span>Klik <strong>Simpan Pengaturan</strong> di atas</li>
+                  <li className="flex gap-2"><span className="text-gray-300 font-mono text-xs mt-0.5">2.</span>Klik <strong>Test Koneksi</strong> — sistem akan memverifikasi token langsung ke Meta API</li>
+                  <li className="flex gap-2"><span className="text-gray-300 font-mono text-xs mt-0.5">3.</span>Jika berhasil, coba klik salah satu link tracking Anda → lalu cek <strong>Events Manager → Test Events</strong> untuk melihat event Lead masuk</li>
+                </ol>
+              </div>
+
+              <div className="bg-blue-50 border border-blue-200 rounded p-3">
+                <p className="text-xs text-blue-700">
+                  <strong>Belum punya akun bisnis Meta?</strong> Buat di <strong>business.facebook.com</strong> — gratis, butuh akun Facebook biasa sebagai login.
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Cara kerja */}
