@@ -43,21 +43,41 @@ export async function getAuthUser() {
   const cookieStore = await cookies()
   const allCookies  = cookieStore.getAll()
 
-  // Find the Supabase auth session cookie (sb-<ref>-auth-token)
-  const authCookie = allCookies.find(c => /sb-.+-auth-token$/.test(c.name))
-  if (!authCookie) return null
+  const db = createServerClient(supabaseUrl, serviceKey, { cookies: { getAll: () => [], setAll: () => {} } })
+
+  // Supabase SSR may chunk the token across multiple cookies (sb-*-auth-token.0, .1, ...)
+  // Collect and assemble all chunks in order
+  const tokenCookies = allCookies
+    .filter(c => c.name.includes('auth-token'))
+    .sort((a, b) => a.name.localeCompare(b.name))
+
+  if (tokenCookies.length === 0) return null
 
   try {
-    let parsed = JSON.parse(decodeURIComponent(authCookie.value))
-    // Supabase chunked cookies are arrays; take first chunk
+    // Assemble value (chunked cookies need to be joined)
+    const raw = tokenCookies.map(c => c.value).join('')
+    const decoded = decodeURIComponent(raw)
+    let parsed = JSON.parse(decoded)
+    // Some versions wrap in an array
     if (Array.isArray(parsed)) parsed = JSON.parse(parsed.join(''))
     const accessToken: string | undefined = parsed?.access_token
     if (!accessToken) return null
 
-    const db = createServerClient(supabaseUrl, serviceKey, { cookies: { getAll: () => [], setAll: () => {} } })
     const { data: { user } } = await db.auth.getUser(accessToken)
     return user ?? null
   } catch {
-    return null
+    // Fallback: try using createServerClient with cookies for auth
+    try {
+      const client = createServerClient(supabaseUrl, serviceKey, {
+        cookies: {
+          getAll: () => allCookies,
+          setAll: () => {},
+        },
+      })
+      const { data: { user } } = await client.auth.getUser()
+      return user ?? null
+    } catch {
+      return null
+    }
   }
 }
