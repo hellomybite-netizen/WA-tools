@@ -20,20 +20,24 @@ export default function RedirectPage() {
     const fbclid      = searchParams.get("fbclid")       ?? undefined;
 
     async function run() {
-      // 1. Lookup link from DB
+      // 1. Lookup link or rotator from DB
       let waUrl = `https://wa.me/?text=Halo`;
       let linkId: string | null = null;
 
       try {
+        // Try regular link first
         const res = await fetch(`/api/links/${encodeURIComponent(slug)}`);
         if (res.ok) {
           const { link } = await res.json();
           linkId = link.id;
-          // UTM from DB, but runtime UTM from URL overrides (for ad platform appending)
-          waUrl = buildWhatsAppUrl(
-            link.destination_phone,
-            link.message ?? "",
-          );
+          waUrl = buildWhatsAppUrl(link.destination_phone, link.message ?? "");
+        } else {
+          // Try rotator
+          const rres = await fetch(`/api/rotators/redirect?slug=${encodeURIComponent(slug)}`);
+          if (rres.ok) {
+            const { phone, message } = await rres.json();
+            waUrl = buildWhatsAppUrl(phone, message ?? "");
+          }
         }
       } catch {
         // fall through with default URL
