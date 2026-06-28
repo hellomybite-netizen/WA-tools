@@ -1,6 +1,7 @@
 export function buildWhatsAppUrl(phone: string, message: string, utmParams?: Record<string, string>): string {
   const cleaned = phone.replace(/\D/g, '')
-  const encoded = encodeURIComponent(message)
+  if (!message || !message.trim()) return `https://wa.me/${cleaned}`
+  const encoded = encodeURIComponent(message.trim())
   return `https://wa.me/${cleaned}?text=${encoded}`
 }
 
