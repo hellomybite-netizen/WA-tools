@@ -1,6 +1,13 @@
-export type SubscriptionTier = "starter" | "pro" | "agency";
+export type SubscriptionTier = "trial" | "starter" | "pro" | "agency";
 
 export const TIERS = {
+  trial: {
+    label: "Trial",
+    price: 0,
+    color: "bg-green-100 text-green-700",
+    badge: "bg-green-500",
+    ring: "ring-green-400",
+  },
   starter: {
     label: "Starter",
     price: 149_000,
@@ -41,6 +48,22 @@ export interface TierFeatures {
 }
 
 export const TIER_FEATURES: Record<SubscriptionTier, TierFeatures> = {
+  // Trial = full Pro features for 30 days
+  trial: {
+    maxLinks: "unlimited",
+    maxRotators: "unlimited",
+    maxCSPerRotator: "unlimited",
+    maxBioLinks: "unlimited",
+    maxTeamMembers: 5,
+    metaCapi: true,
+    multiCurrency: true,
+    crm: true,
+    wallet: true,
+    exportReports: true,
+    multiWorkspace: false,
+    apiAccess: false,
+    prioritySupport: false,
+  },
   starter: {
     maxLinks: 10,
     maxRotators: 2,
@@ -99,7 +122,7 @@ export const FEATURE_TIER_GATE: Record<string, SubscriptionTier> = {
   teamMembers: "pro",
 };
 
-export const TIER_ORDER: SubscriptionTier[] = ["starter", "pro", "agency"];
+export const TIER_ORDER: SubscriptionTier[] = ["trial", "starter", "pro", "agency"];
 
 export function tierSatisfies(current: SubscriptionTier, required: SubscriptionTier): boolean {
   return TIER_ORDER.indexOf(current) >= TIER_ORDER.indexOf(required);

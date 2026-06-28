@@ -12,6 +12,8 @@ interface Props {
   serverTier: SubscriptionTier | null;
   userEmail: string | null;
   isDemo: boolean;
+  trialDaysLeft?: number | null;
+  trialExpired?: boolean;
 }
 
 // Features locked per nav item — maps href to feature key
@@ -24,7 +26,7 @@ const NAV_TIER_GATES: Record<string, keyof typeof TIER_FEATURES["starter"]> = {
   "/dashboard/api-access":  "apiAccess",
 };
 
-export default function DashboardShell({ children, serverRole, serverTier, userEmail, isDemo }: Props) {
+export default function DashboardShell({ children, serverRole, serverTier, userEmail, isDemo, trialDaysLeft, trialExpired }: Props) {
   const pathname = usePathname();
   const [role, setRole] = useState<UserRole>(serverRole ?? "advertiser");
   const [tier, setTier] = useState<SubscriptionTier>(serverTier ?? "pro");
@@ -113,7 +115,31 @@ export default function DashboardShell({ children, serverRole, serverTier, userE
         </div>
       </aside>
 
-      <main className="flex-1 overflow-y-auto p-8">{children}</main>
+      <div className="flex-1 flex flex-col overflow-hidden">
+        {/* Trial banner */}
+        {trialExpired && (
+          <div className="bg-red-600 text-white text-sm px-6 py-2.5 flex items-center justify-between flex-shrink-0">
+            <span>⚠️ Trial Anda sudah berakhir — fitur Pro tidak dapat diakses. Upgrade untuk melanjutkan.</span>
+            <Link href="/#harga" className="ml-4 bg-white text-red-600 font-bold text-xs px-3 py-1 rounded hover:bg-red-50 transition-colors whitespace-nowrap">
+              Upgrade Sekarang →
+            </Link>
+          </div>
+        )}
+        {!trialExpired && trialDaysLeft != null && trialDaysLeft <= 7 && (
+          <div className="bg-amber-500 text-white text-sm px-6 py-2.5 flex items-center justify-between flex-shrink-0">
+            <span>⏳ Trial berakhir dalam <strong>{trialDaysLeft} hari</strong> — upgrade sekarang agar data dan fitur tetap aktif.</span>
+            <Link href="/#harga" className="ml-4 bg-white text-amber-600 font-bold text-xs px-3 py-1 rounded hover:bg-amber-50 transition-colors whitespace-nowrap">
+              Lihat Paket →
+            </Link>
+          </div>
+        )}
+        {!trialExpired && trialDaysLeft != null && trialDaysLeft > 7 && (
+          <div className="bg-green-600 text-white text-xs px-6 py-1.5 flex items-center gap-2 flex-shrink-0">
+            <span>🎉 Trial aktif — <strong>{trialDaysLeft} hari</strong> tersisa. Semua fitur Pro terbuka.</span>
+          </div>
+        )}
+        <main className="flex-1 overflow-y-auto p-8">{children}</main>
+      </div>
 
       {isDemo && <DemoRoleSwitcher />}
     </div>
