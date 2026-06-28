@@ -1,60 +1,118 @@
 import { NextRequest, NextResponse } from "next/server";
+import { createServerSupabaseClient, isSupabaseConfiguredServer } from "@/lib/supabase-server";
 import { createServerClient } from "@supabase/ssr";
 import { sendMetaCapiEvent } from "@/lib/meta-capi";
 
+// GET /api/conversions — load click_events with conversion status
+export async function GET() {
+  if (!isSupabaseConfiguredServer()) return NextResponse.json({ clicks: [] });
+
+  const supabase = await createServerSupabaseClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  // Load click events with link info
+  const { data: clicks } = await supabase
+    .from("click_events")
+    .select(`
+      id, clicked_at, utm_source, utm_medium, utm_campaign, ip,
+      links ( label, destination_phone, slug )
+    `)
+    .eq("user_id", user.id)
+    .order("clicked_at", { ascending: false })
+    .limit(100);
+
+  // Load conversions for this user
+  const { data: conversions } = await supabase
+    .from("conversions")
+    .select("click_id, amount, currency, note, converted_at")
+    .eq("user_id", user.id);
+
+  const conversionMap = new Map(conversions?.map(c => [c.click_id, c]) ?? []);
+
+  const result = (clicks ?? []).map(c => ({
+    id: c.id,
+    clickedAt: c.clicked_at,
+    utmSource: c.utm_source ?? "langsung",
+    utmMedium: c.utm_medium,
+    utmCampaign: c.utm_campaign,
+    linkLabel: (c.links as any)?.label ?? null,
+    phone: (c.links as any)?.destination_phone ?? "—",
+    converted: conversionMap.has(c.id),
+    conversionValue: conversionMap.get(c.id)?.amount ?? null,
+    currency: conversionMap.get(c.id)?.currency ?? null,
+    convertedAt: conversionMap.get(c.id)?.converted_at ?? null,
+  }));
+
+  return NextResponse.json({ clicks: result });
+}
+
+// POST /api/conversions — mark a click as converted
 export async function POST(req: NextRequest) {
-  const { clickId, value, currency = "IDR", orderId, userId } = await req.json();
+  if (!isSupabaseConfiguredServer()) return NextResponse.json({ error: "Not configured" }, { status: 503 });
 
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  const configured = supabaseUrl && !supabaseUrl.includes("your_supabase");
-  if (!configured) return NextResponse.json({ ok: false, error: "Supabase not configured" }, { status: 400 });
+  const supabase = await createServerSupabaseClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const supabase = createServerClient(supabaseUrl!, supabaseKey!, { cookies: { getAll: () => [], setAll: () => {} } });
+  const { clickId, amount, currency = "IDR", note } = await req.json();
+  if (!clickId || !amount) return NextResponse.json({ error: "clickId and amount required" }, { status: 400 });
 
-  // 1. Tandai klik sebagai converted di database
+  // Get click to verify ownership + get fbclid/ip/ua
   const { data: click } = await supabase
-    .from("link_clicks")
-    .update({
-      converted: true,
-      conversion_value: value,
-      converted_at: new Date().toISOString(),
-    })
+    .from("click_events")
+    .select("id, user_id, ip, user_agent, utm_source, link_id")
     .eq("id", clickId)
-    .select("utm_source, utm_medium, utm_campaign, fbclid, user_agent, ip, link_id")
+    .eq("user_id", user.id)
     .single();
 
-  if (!click) return NextResponse.json({ ok: false, error: "Click not found" }, { status: 404 });
+  if (!click) return NextResponse.json({ error: "Click not found" }, { status: 404 });
 
-  // 2. Simpan ke tabel conversions
-  await supabase.from("conversions").insert({
-    click_id: clickId,
-    user_id: userId,
-    value,
-    currency,
-    order_id: orderId,
-  });
-
-  // 3. Kirim Purchase event ke Meta CAPI
-  const { data: settings } = await supabase
-    .from("pixel_settings")
-    .select("meta_pixel_id, meta_access_token")
-    .eq("user_id", userId)
+  // Save conversion
+  const { data: conversion, error } = await supabase
+    .from("conversions")
+    .insert({
+      user_id: user.id,
+      click_id: clickId,
+      link_id: click.link_id,
+      amount: Number(amount),
+      currency,
+      note: note || null,
+      converted_by: user.id,
+    })
+    .select("id")
     .single();
 
-  let capiResult = null;
-  if (settings?.meta_pixel_id && settings?.meta_access_token) {
-    capiResult = await sendMetaCapiEvent({
-      pixelId: settings.meta_pixel_id,
-      accessToken: settings.meta_access_token,
-      eventName: "Purchase",
-      userIp: click.ip,
-      userAgent: click.user_agent,
-      fbclid: click.fbclid,
-      customData: { currency, value, order_id: orderId },
-      eventId: `purchase_${clickId}`,
-    });
+  if (error) {
+    if (error.code === "23505") return NextResponse.json({ error: "Sudah ditandai konversi" }, { status: 409 });
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  return NextResponse.json({ ok: true, capiSent: !!capiResult?.success });
+  // Fire Meta CAPI Purchase event
+  let capiSent = false;
+  const supabaseRaw = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { cookies: { getAll: () => [], setAll: () => {} } }
+  );
+  const { data: pixel } = await supabaseRaw
+    .from("pixel_settings")
+    .select("meta_pixel_id, meta_access_token")
+    .eq("user_id", user.id)
+    .single();
+
+  if (pixel?.meta_pixel_id && pixel?.meta_access_token) {
+    const result = await sendMetaCapiEvent({
+      pixelId: pixel.meta_pixel_id,
+      accessToken: pixel.meta_access_token,
+      eventName: "Purchase",
+      userIp: click.ip ?? undefined,
+      userAgent: click.user_agent ?? undefined,
+      customData: { currency, value: Number(amount) },
+      eventId: `purchase_${conversion?.id}`,
+    });
+    capiSent = result.success;
+  }
+
+  return NextResponse.json({ ok: true, conversionId: conversion?.id, capiSent });
 }

@@ -1,250 +1,271 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { CURRENCIES, CurrencyCode, formatCurrency } from "@/lib/currencies";
+import { isSupabaseConfigured } from "@/lib/supabase";
 
-interface Lead {
+interface ClickRow {
   id: string;
   clickedAt: string;
   utmSource: string;
-  utmCampaign: string;
+  utmMedium: string | null;
+  utmCampaign: string | null;
+  linkLabel: string | null;
   phone: string;
-  csAssigned: string;
   converted: boolean;
-  conversionValue?: number;
-  currency?: CurrencyCode;
+  conversionValue: number | null;
+  currency: CurrencyCode | null;
+  convertedAt: string | null;
 }
 
-// Demo data — will be replaced with real Supabase data
-const demoLeads: Lead[] = [
-  { id: "1", clickedAt: "2025-07-01 09:14", utmSource: "instagram", utmCampaign: "promo-juli", phone: "628111xxx", csAssigned: "CS Andi", converted: false },
-  { id: "2", clickedAt: "2025-07-01 10:02", utmSource: "tiktok", utmCampaign: "fyp-ads", phone: "628222xxx", csAssigned: "CS Budi", converted: true, conversionValue: 350000, currency: "IDR" },
-  { id: "3", clickedAt: "2025-07-01 11:30", utmSource: "instagram", utmCampaign: "promo-juli", phone: "628333xxx", csAssigned: "CS Andi", converted: false },
-  { id: "4", clickedAt: "2025-07-01 12:55", utmSource: "facebook", utmCampaign: "remarketing", phone: "628444xxx", csAssigned: "CS Citra", converted: true, conversionValue: 480, currency: "HKD" },
-  { id: "5", clickedAt: "2025-07-01 14:10", utmSource: "tiktok", utmCampaign: "fyp-ads", phone: "628555xxx", csAssigned: "CS Budi", converted: false },
-  { id: "6", clickedAt: "2025-07-01 15:22", utmSource: "google", utmCampaign: "brand-search", phone: "628666xxx", csAssigned: "CS Citra", converted: true, conversionValue: 320, currency: "MYR" },
-];
-
-const sourceColors: Record<string, string> = {
+const SOURCE_COLORS: Record<string, string> = {
   instagram: "bg-pink-100 text-pink-700",
   tiktok: "bg-gray-900 text-white",
   facebook: "bg-blue-100 text-blue-700",
   google: "bg-yellow-100 text-yellow-700",
+  langsung: "bg-gray-100 text-gray-600",
 };
 
+// Demo fallback when Supabase not configured
+const DEMO_ROWS: ClickRow[] = [
+  { id: "1", clickedAt: "2025-07-01 09:14", utmSource: "instagram", utmMedium: "stories", utmCampaign: "promo-juli", linkLabel: "IG Stories", phone: "628111xxx", converted: false, conversionValue: null, currency: null, convertedAt: null },
+  { id: "2", clickedAt: "2025-07-01 10:02", utmSource: "tiktok", utmMedium: "fyp", utmCampaign: "fyp-ads", linkLabel: "TikTok Ads", phone: "628222xxx", converted: true, conversionValue: 350000, currency: "IDR", convertedAt: "2025-07-01 10:45" },
+  { id: "3", clickedAt: "2025-07-01 11:30", utmSource: "instagram", utmMedium: "stories", utmCampaign: "promo-juli", linkLabel: "IG Stories", phone: "628333xxx", converted: false, conversionValue: null, currency: null, convertedAt: null },
+  { id: "4", clickedAt: "2025-07-01 12:55", utmSource: "facebook", utmMedium: "feed", utmCampaign: "remarketing", linkLabel: "FB Ads", phone: "628444xxx", converted: true, conversionValue: 480, currency: "HKD", convertedAt: "2025-07-01 13:20" },
+];
+
 export default function ConversionsPage() {
-  const [leads, setLeads] = useState<Lead[]>(demoLeads);
+  const isReal = isSupabaseConfigured();
+  const [rows, setRows]           = useState<ClickRow[]>([]);
+  const [loading, setLoading]     = useState(true);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [value, setValue] = useState("");
-  const [currency, setCurrency] = useState<CurrencyCode>("IDR");
-  const [orderId, setOrderId] = useState("");
+  const [amount, setAmount]       = useState("");
+  const [currency, setCurrency]   = useState<CurrencyCode>("IDR");
+  const [note, setNote]           = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [filter, setFilter] = useState<"all" | "pending" | "converted">("all");
+  const [filter, setFilter]       = useState<"all" | "pending" | "converted">("all");
 
-  const convertedLeads = leads.filter((l) => l.converted);
-  const conversionRate = Math.round((convertedLeads.length / leads.length) * 100);
+  useEffect(() => { loadData(); }, []);
 
-  // Group revenue by currency
-  const revenueByCurrency = convertedLeads.reduce<Partial<Record<CurrencyCode, number>>>((acc, l) => {
-    if (!l.conversionValue || !l.currency) return acc;
-    acc[l.currency] = (acc[l.currency] ?? 0) + l.conversionValue;
-    return acc;
-  }, {});
+  async function loadData() {
+    setLoading(true);
+    if (!isReal) { setRows(DEMO_ROWS); setLoading(false); return; }
+    try {
+      const res = await fetch("/api/conversions");
+      const data = await res.json();
+      setRows(data.clicks ?? []);
+    } catch {
+      toast.error("Gagal memuat data");
+    }
+    setLoading(false);
+  }
 
-  async function handleMarkConverted(leadId: string) {
-    if (!value || isNaN(Number(value))) {
+  async function handleMarkConverted(clickId: string) {
+    if (!amount || isNaN(Number(amount)) || Number(amount) <= 0) {
       toast.error("Masukkan nilai transaksi yang valid");
       return;
     }
     setSubmitting(true);
 
-    // In production: call /api/conversions with clickId + value
-    // For demo: update local state
-    await new Promise((r) => setTimeout(r, 800));
-    setLeads((prev) =>
-      prev.map((l) =>
-        l.id === leadId ? { ...l, converted: true, conversionValue: Number(value), currency } : l
-      )
-    );
-    toast.success(`✓ Konversi ${formatCurrency(Number(value), currency)} ditandai & dikirim ke Meta CAPI`);
-    setSelectedId(null);
-    setValue("");
-    setOrderId("");
+    if (!isReal) {
+      // Demo mode
+      await new Promise(r => setTimeout(r, 800));
+      setRows(prev => prev.map(r => r.id === clickId
+        ? { ...r, converted: true, conversionValue: Number(amount), currency, convertedAt: new Date().toISOString() }
+        : r));
+      toast.success(`✓ Demo: Konversi ${formatCurrency(Number(amount), currency)} ditandai`);
+      setSelectedId(null); setAmount(""); setNote("");
+      setSubmitting(false);
+      return;
+    }
+
+    try {
+      const res = await fetch("/api/conversions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ clickId, amount: Number(amount), currency, note: note || null }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+
+      setRows(prev => prev.map(r => r.id === clickId
+        ? { ...r, converted: true, conversionValue: Number(amount), currency, convertedAt: new Date().toISOString() }
+        : r));
+
+      if (data.capiSent) {
+        toast.success(`✓ Konversi ${formatCurrency(Number(amount), currency)} disimpan & Purchase event terkirim ke Meta CAPI`);
+      } else {
+        toast.success(`✓ Konversi ${formatCurrency(Number(amount), currency)} disimpan (Meta pixel belum dikonfigurasi)`);
+      }
+      setSelectedId(null); setAmount(""); setNote("");
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Gagal menyimpan konversi");
+    }
     setSubmitting(false);
   }
 
-  const filtered = leads.filter((l) =>
-    filter === "all" ? true : filter === "converted" ? l.converted : !l.converted
+  const converted = rows.filter(r => r.converted);
+  const pending   = rows.filter(r => !r.converted);
+  const convRate  = rows.length > 0 ? Math.round((converted.length / rows.length) * 100) : 0;
+
+  const revenueByCurrency = converted.reduce<Partial<Record<CurrencyCode, number>>>((acc, r) => {
+    if (!r.conversionValue || !r.currency) return acc;
+    acc[r.currency] = (acc[r.currency] ?? 0) + r.conversionValue;
+    return acc;
+  }, {});
+
+  const filtered = rows.filter(r =>
+    filter === "all" ? true : filter === "converted" ? r.converted : !r.converted
   );
+
+  function formatTime(iso: string) {
+    return new Date(iso).toLocaleString("id-ID", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+  }
 
   return (
     <div>
-      <h1 className="text-2xl font-bold mb-1">Konversi</h1>
-      <p className="text-gray-500 text-sm mb-6">Tandai deal yang berhasil — sistem otomatis kirim Purchase event ke Meta</p>
+      <div className="flex items-center justify-between mb-1">
+        <h1 className="text-2xl font-bold">Konversi</h1>
+        <button onClick={loadData} className="text-xs text-gray-400 hover:text-gray-600">↻ Refresh</button>
+      </div>
+      <p className="text-gray-500 text-sm mb-6">
+        Tandai deal berhasil — sistem otomatis kirim Purchase event ke Meta CAPI
+        {!isReal && <span className="ml-2 text-amber-600 font-medium">(Demo Mode)</span>}
+      </p>
 
-      {/* Summary cards */}
+      {/* KPI cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <div className="bg-white border rounded-lg p-4">
-          <p className="text-xs text-gray-500 mb-1">Total Lead Masuk</p>
-          <p className="text-2xl font-bold text-gray-900">{leads.length}</p>
-          <p className="text-xs text-gray-400 mt-0.5">hari ini</p>
+          <p className="text-xs text-gray-500 mb-1">Total Lead</p>
+          <p className="text-2xl font-bold">{rows.length}</p>
+          <p className="text-xs text-gray-400 mt-0.5">klik masuk</p>
         </div>
         <div className="bg-white border rounded-lg p-4">
           <p className="text-xs text-gray-500 mb-1">Sudah Konversi</p>
-          <p className="text-2xl font-bold text-gray-900">{convertedLeads.length}</p>
-          <p className="text-xs text-gray-400 mt-0.5">{conversionRate}% rate</p>
+          <p className="text-2xl font-bold text-green-600">{converted.length}</p>
+          <p className="text-xs text-gray-400 mt-0.5">{convRate}% conv. rate</p>
         </div>
         <div className="bg-white border rounded-lg p-4">
-          <p className="text-xs text-gray-500 mb-1">Belum Ditandai</p>
-          <p className="text-2xl font-bold text-gray-900">{leads.filter((l) => !l.converted).length}</p>
-          <p className="text-xs text-gray-400 mt-0.5">perlu follow-up</p>
+          <p className="text-xs text-gray-500 mb-1">Perlu Follow-up</p>
+          <p className="text-2xl font-bold text-amber-600">{pending.length}</p>
+          <p className="text-xs text-gray-400 mt-0.5">belum ditandai</p>
         </div>
-        {/* Multi-currency revenue card */}
         <div className="bg-white border rounded-lg p-4">
           <p className="text-xs text-gray-500 mb-2">Total Revenue</p>
-          <div className="space-y-0.5">
-            {Object.entries(revenueByCurrency).length === 0 ? (
-              <p className="text-gray-400 text-sm">—</p>
-            ) : (
-              Object.entries(revenueByCurrency).map(([code, val]) => (
-                <p key={code} className="text-sm font-semibold text-gray-900">
-                  {CURRENCIES[code as CurrencyCode].flag} {formatCurrency(val!, code as CurrencyCode)}
-                </p>
-              ))
-            )}
-          </div>
+          {Object.entries(revenueByCurrency).length === 0
+            ? <p className="text-gray-400 text-sm">—</p>
+            : Object.entries(revenueByCurrency).map(([code, val]) => (
+              <p key={code} className="text-sm font-semibold">
+                {CURRENCIES[code as CurrencyCode].flag} {formatCurrency(val!, code as CurrencyCode)}
+              </p>
+            ))
+          }
         </div>
       </div>
 
-      {/* Filter tabs */}
+      {/* Filter */}
       <div className="flex gap-2 mb-4">
-        {(["all", "pending", "converted"] as const).map((f) => (
-          <button
-            key={f}
-            onClick={() => setFilter(f)}
-            className={`px-3 py-1.5 rounded text-sm font-medium transition-colors ${
-              filter === f ? "bg-gray-900 text-white" : "border text-gray-500 hover:bg-gray-50"
-            }`}
-          >
-            {{ all: "Semua", pending: "Belum Ditandai", converted: "Sudah Konversi" }[f]}
+        {(["all", "pending", "converted"] as const).map(f => (
+          <button key={f} onClick={() => setFilter(f)}
+            className={`px-3 py-1.5 rounded text-sm font-medium transition-colors ${filter === f ? "bg-gray-900 text-white" : "border text-gray-500 hover:bg-gray-50"}`}>
+            {{ all: `Semua (${rows.length})`, pending: `Belum Ditandai (${pending.length})`, converted: `Konversi (${converted.length})` }[f]}
           </button>
         ))}
       </div>
 
-      {/* Leads table */}
+      {/* Table */}
       <div className="bg-white border rounded-lg overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="bg-gray-50 border-b">
-              <tr>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Waktu</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Sumber</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Kampanye</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">CS</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Status</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Nilai</th>
-                <th className="px-4 py-3"></th>
-              </tr>
-            </thead>
-            <tbody className="divide-y">
-              {filtered.map((lead) => (
-                <>
-                  <tr key={lead.id} className={`hover:bg-gray-50 ${selectedId === lead.id ? "bg-green-50" : ""}`}>
-                    <td className="px-4 py-3 text-gray-500 text-xs">{lead.clickedAt}</td>
-                    <td className="px-4 py-3">
-                      <span className={`text-xs px-2 py-0.5 rounded font-medium ${sourceColors[lead.utmSource] ?? "bg-gray-100 text-gray-600"}`}>
-                        {lead.utmSource}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-gray-600 text-xs">{lead.utmCampaign}</td>
-                    <td className="px-4 py-3 text-gray-700 text-xs font-medium">{lead.csAssigned}</td>
-                    <td className="px-4 py-3">
-                      {lead.converted ? (
-                        <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded font-medium">✓ Konversi</span>
-                      ) : (
-                        <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded font-medium">Pending</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-gray-700 text-sm font-medium font-mono">
-                      {lead.conversionValue && lead.currency
-                        ? `${CURRENCIES[lead.currency].flag} ${formatCurrency(lead.conversionValue, lead.currency)}`
-                        : "—"}
-                    </td>
-                    <td className="px-4 py-3">
-                      {!lead.converted && (
-                        <button
-                          onClick={() => setSelectedId(selectedId === lead.id ? null : lead.id)}
-                          className="text-xs px-3 py-1.5 bg-green-600 text-white rounded hover:bg-green-700 transition-colors font-medium whitespace-nowrap"
-                        >
-                          Tandai Terjual
-                        </button>
-                      )}
-                    </td>
-                  </tr>
-                  {selectedId === lead.id && (
-                    <tr key={`${lead.id}-form`} className="bg-green-50">
-                      <td colSpan={7} className="px-4 py-4">
-                        <div className="flex items-end gap-3 flex-wrap">
-                          <div>
-                            <label className="block text-xs font-medium text-gray-600 mb-1">Currency *</label>
-                            <select
-                              value={currency}
-                              onChange={(e) => setCurrency(e.target.value as CurrencyCode)}
-                              className="border rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
-                            >
-                              {(Object.keys(CURRENCIES) as CurrencyCode[]).map((c) => (
-                                <option key={c} value={c}>
-                                  {CURRENCIES[c].flag} {c} — {CURRENCIES[c].name}
-                                </option>
-                              ))}
-                            </select>
-                          </div>
-                          <div>
-                            <label className="block text-xs font-medium text-gray-600 mb-1">Nilai Transaksi *</label>
-                            <input
-                              autoFocus
-                              type="number"
-                              value={value}
-                              onChange={(e) => setValue(e.target.value)}
-                              className="border rounded px-3 py-1.5 text-sm w-40 focus:outline-none focus:ring-2 focus:ring-green-500"
-                              placeholder={currency === "IDR" ? "350000" : "150"}
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-xs font-medium text-gray-600 mb-1">ID Order (opsional)</label>
-                            <input
-                              type="text"
-                              value={orderId}
-                              onChange={(e) => setOrderId(e.target.value)}
-                              className="border rounded px-3 py-1.5 text-sm w-36 focus:outline-none focus:ring-2 focus:ring-green-500"
-                              placeholder="ORD-001"
-                            />
-                          </div>
-                          <button
-                            onClick={() => handleMarkConverted(lead.id)}
-                            disabled={submitting}
-                            className="px-4 py-1.5 bg-green-600 text-white rounded text-sm font-medium hover:bg-green-700 disabled:opacity-50 transition-colors"
-                          >
-                            {submitting ? "Mengirim ke Meta..." : "Konfirmasi & Kirim ke Meta"}
+        {loading ? (
+          <div className="p-12 text-center text-gray-400 text-sm">Memuat data...</div>
+        ) : filtered.length === 0 ? (
+          <div className="p-12 text-center text-gray-400 text-sm">
+            {rows.length === 0 ? "Belum ada klik masuk — bagikan link tracking Anda" : "Tidak ada data untuk filter ini"}
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-gray-50 border-b">
+                <tr>
+                  {["Waktu Klik", "Sumber", "Kampanye", "Link", "Status", "Nilai", ""].map(h => (
+                    <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y">
+                {filtered.map(row => (
+                  <>
+                    <tr key={row.id} className={`hover:bg-gray-50 ${selectedId === row.id ? "bg-green-50" : ""}`}>
+                      <td className="px-4 py-3 text-xs text-gray-500 whitespace-nowrap">{formatTime(row.clickedAt)}</td>
+                      <td className="px-4 py-3">
+                        <span className={`text-xs px-2 py-0.5 rounded font-medium ${SOURCE_COLORS[row.utmSource] ?? "bg-gray-100 text-gray-600"}`}>
+                          {row.utmSource}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-xs text-gray-500">{row.utmCampaign ?? "—"}</td>
+                      <td className="px-4 py-3 text-xs text-gray-600">{row.linkLabel ?? "—"}</td>
+                      <td className="px-4 py-3">
+                        {row.converted
+                          ? <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded font-medium">✓ Konversi</span>
+                          : <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded font-medium">Pending</span>}
+                      </td>
+                      <td className="px-4 py-3 text-sm font-medium font-mono">
+                        {row.conversionValue && row.currency
+                          ? `${CURRENCIES[row.currency].flag} ${formatCurrency(row.conversionValue, row.currency)}`
+                          : "—"}
+                      </td>
+                      <td className="px-4 py-3">
+                        {!row.converted && (
+                          <button onClick={() => { setSelectedId(selectedId === row.id ? null : row.id); setAmount(""); setNote(""); }}
+                            className="text-xs px-3 py-1.5 bg-green-600 text-white rounded hover:bg-green-700 transition-colors font-medium whitespace-nowrap">
+                            Tandai Terjual
                           </button>
-                          <button
-                            onClick={() => setSelectedId(null)}
-                            className="px-3 py-1.5 text-gray-500 hover:text-gray-800 text-sm"
-                          >
-                            Batal
-                          </button>
-                        </div>
-                        <p className="text-xs text-green-700 mt-2">
-                          ↑ Nilai ini akan dikirim sebagai event <strong>Purchase</strong> ke Meta CAPI — ROAS di Ads Manager akan terupdate otomatis.
-                        </p>
+                        )}
                       </td>
                     </tr>
-                  )}
-                </>
-              ))}
-            </tbody>
-          </table>
-        </div>
+
+                    {selectedId === row.id && (
+                      <tr key={`${row.id}-form`}>
+                        <td colSpan={7} className="px-4 py-4 bg-green-50 border-b">
+                          <div className="flex items-end gap-3 flex-wrap">
+                            <div>
+                              <label className="block text-xs font-medium text-gray-600 mb-1">Currency</label>
+                              <select value={currency} onChange={e => setCurrency(e.target.value as CurrencyCode)}
+                                className="border rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500">
+                                {(Object.keys(CURRENCIES) as CurrencyCode[]).map(c => (
+                                  <option key={c} value={c}>{CURRENCIES[c].flag} {c} — {CURRENCIES[c].name}</option>
+                                ))}
+                              </select>
+                            </div>
+                            <div>
+                              <label className="block text-xs font-medium text-gray-600 mb-1">Nilai Transaksi *</label>
+                              <input autoFocus type="number" value={amount} onChange={e => setAmount(e.target.value)}
+                                className="border rounded px-3 py-1.5 text-sm w-36 focus:outline-none focus:ring-2 focus:ring-green-500"
+                                placeholder={currency === "IDR" ? "350000" : "150"} />
+                            </div>
+                            <div>
+                              <label className="block text-xs font-medium text-gray-600 mb-1">Catatan (opsional)</label>
+                              <input type="text" value={note} onChange={e => setNote(e.target.value)}
+                                className="border rounded px-3 py-1.5 text-sm w-40 focus:outline-none focus:ring-2 focus:ring-green-500"
+                                placeholder="Produk, order ID, dll" />
+                            </div>
+                            <button onClick={() => handleMarkConverted(row.id)} disabled={submitting}
+                              className="px-4 py-1.5 bg-green-600 text-white rounded text-sm font-medium hover:bg-green-700 disabled:opacity-50 transition-colors">
+                              {submitting ? "Menyimpan..." : "Konfirmasi & Kirim ke Meta"}
+                            </button>
+                            <button onClick={() => setSelectedId(null)} className="text-sm text-gray-500 hover:text-gray-800">Batal</button>
+                          </div>
+                          <p className="text-xs text-green-700 mt-2">
+                            ↑ Nilai ini dikirim sebagai event <strong>Purchase</strong> ke Meta CAPI — ROAS di Ads Manager terupdate otomatis.
+                          </p>
+                        </td>
+                      </tr>
+                    )}
+                  </>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </div>
   );
