@@ -28,11 +28,12 @@ export async function GET() {
   // Auto-create if first time
   if (!rotator) {
     const slug = "rotator-" + Math.random().toString(36).slice(2, 8);
-    const { data: created } = await db
+    const { data: created, error: createError } = await db
       .from("rotators")
       .insert({ user_id: user.id, name: "Rotator Utama", slug })
       .select("*, rotator_members(*)")
       .single();
+    if (createError) return NextResponse.json({ error: "Create failed: " + createError.message }, { status: 500 });
     rotator = created;
   }
 
