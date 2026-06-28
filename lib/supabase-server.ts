@@ -54,11 +54,17 @@ export async function getAuthUser() {
   if (tokenCookies.length === 0) return null
 
   try {
-    // Assemble value (chunked cookies need to be joined)
     const raw = tokenCookies.map(c => c.value).join('')
-    const decoded = decodeURIComponent(raw)
-    let parsed = JSON.parse(decoded)
-    // Some versions wrap in an array
+
+    // Handle base64- prefix format (newer @supabase/ssr)
+    let jsonStr: string
+    if (raw.startsWith('base64-')) {
+      jsonStr = Buffer.from(raw.slice(7), 'base64').toString('utf-8')
+    } else {
+      jsonStr = decodeURIComponent(raw)
+    }
+
+    let parsed = JSON.parse(jsonStr)
     if (Array.isArray(parsed)) parsed = JSON.parse(parsed.join(''))
     const accessToken: string | undefined = parsed?.access_token
     if (!accessToken) return null
@@ -66,18 +72,6 @@ export async function getAuthUser() {
     const { data: { user } } = await db.auth.getUser(accessToken)
     return user ?? null
   } catch {
-    // Fallback: try using createServerClient with cookies for auth
-    try {
-      const client = createServerClient(supabaseUrl, serviceKey, {
-        cookies: {
-          getAll: () => allCookies,
-          setAll: () => {},
-        },
-      })
-      const { data: { user } } = await client.auth.getUser()
-      return user ?? null
-    } catch {
-      return null
-    }
+    return null
   }
 }
