@@ -285,6 +285,102 @@ export default function Home() {
         </div>
       </section>
 
+      {/* HOW TRACKING WORKS */}
+      <section className="max-w-4xl mx-auto px-6 py-20">
+        <div className="text-center mb-12">
+          <p className="text-sm font-semibold text-green-600 uppercase tracking-widest mb-2">Di Balik Layar</p>
+          <h2 className="text-3xl font-bold">Bagaimana WA Tools Tahu<br />Iklan Mana yang Menghasilkan?</h2>
+          <p className="text-gray-500 mt-3 max-w-xl mx-auto">Tidak ada pixel browser yang mudah diblokir. WA Tools melacak dari server — akurat 100%.</p>
+        </div>
+
+        {/* Flow diagram */}
+        <div className="relative">
+          {/* Steps */}
+          <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-8">
+            {[
+              { step: "1", icon: "📸", title: "Iklan diklik", desc: "Customer klik iklan Instagram / TikTok / Google Anda" },
+              { step: "2", icon: "🔗", title: "Link WA Tools", desc: "Redirect ke link WA Tools yang membawa UTM source, medium, campaign" },
+              { step: "3", icon: "💬", title: "WA terbuka", desc: "Customer masuk WhatsApp — UTM disimpan di server, bukan di browser" },
+              { step: "4", icon: "✅", title: "CS tandai konversi", desc: "CS klik 'Tandai Berhasil' → WA Tools kirim event ke Meta CAPI" },
+            ].map((s) => (
+              <div key={s.step} className="relative bg-white border rounded-xl p-4 text-center">
+                <div className="w-6 h-6 bg-green-600 text-white text-xs font-bold rounded-full flex items-center justify-center mx-auto mb-3">{s.step}</div>
+                <div className="text-2xl mb-2">{s.icon}</div>
+                <p className="font-semibold text-sm text-gray-900 mb-1">{s.title}</p>
+                <p className="text-xs text-gray-500 leading-relaxed">{s.desc}</p>
+              </div>
+            ))}
+          </div>
+
+          {/* Arrow line — desktop only */}
+          <div className="hidden sm:flex absolute top-[3.5rem] left-[12.5%] right-[12.5%] items-center pointer-events-none">
+            <div className="flex-1 border-t-2 border-dashed border-green-200" />
+          </div>
+        </div>
+
+        {/* CAPI explanation */}
+        <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="bg-blue-50 border border-blue-100 rounded-xl p-5">
+            <div className="flex items-center gap-2 mb-3">
+              <span className="text-xl">🧠</span>
+              <p className="font-bold text-blue-900">Meta Conversions API (CAPI)</p>
+              <span className="text-xs bg-green-100 text-green-700 font-bold px-2 py-0.5 rounded ml-auto">Gratis, semua paket</span>
+            </div>
+            <p className="text-sm text-blue-800 leading-relaxed mb-3">
+              Ketika CS menandai penjualan berhasil, WA Tools langsung mengirim event <strong>Purchase</strong> ke Meta dari server — bukan dari browser pelanggan.
+            </p>
+            <ul className="space-y-1.5">
+              {[
+                "Tidak terpengaruh Ad Blocker atau iOS privacy",
+                "Data konversi lebih akurat vs. pixel browser",
+                "Algoritma Meta belajar siapa pelanggan terbaik Anda",
+                "ROAS di Ads Manager jadi lebih akurat",
+              ].map(item => (
+                <li key={item} className="flex items-start gap-2 text-xs text-blue-700">
+                  <span className="text-green-500 font-bold flex-shrink-0">✓</span>{item}
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <div className="bg-gray-900 text-white rounded-xl p-5">
+            <div className="flex items-center gap-2 mb-3">
+              <span className="text-xl">📊</span>
+              <p className="font-bold">Hasilnya di Ads Manager Anda</p>
+            </div>
+            <div className="space-y-3">
+              {[
+                { label: "Sebelum CAPI", roas: "2.1x", conv: "8", color: "bg-red-500", width: "35%" },
+                { label: "Sesudah CAPI", roas: "5.9x", conv: "34", color: "bg-green-500", width: "100%" },
+              ].map(r => (
+                <div key={r.label}>
+                  <div className="flex justify-between text-xs mb-1">
+                    <span className="text-gray-400">{r.label}</span>
+                    <span className="font-bold">{r.roas} ROAS · {r.conv} konversi tercatat</span>
+                  </div>
+                  <div className="h-2 bg-gray-700 rounded-full overflow-hidden">
+                    <div className={`h-full ${r.color} rounded-full`} style={{ width: r.width }} />
+                  </div>
+                </div>
+              ))}
+            </div>
+            <p className="text-xs text-gray-400 mt-4">
+              Konversi yang tidak tercatat = budget iklan yang terbuang.<br />
+              CAPI memastikan setiap penjualan WA terhitung di Meta.
+            </p>
+          </div>
+        </div>
+
+        {/* Bottom note */}
+        <div className="mt-6 flex items-start gap-3 bg-green-50 border border-green-200 rounded-xl p-4">
+          <span className="text-2xl flex-shrink-0">💡</span>
+          <div>
+            <p className="font-semibold text-green-900 text-sm">Tidak perlu developer, tidak perlu coding</p>
+            <p className="text-sm text-green-700 mt-0.5">CS Anda cukup klik satu tombol setiap ada penjualan. WA Tools yang kirim datanya ke Meta secara otomatis — termasuk nilai transaksi agar ROAS Anda akurat.</p>
+          </div>
+        </div>
+      </section>
+
       {/* TESTIMONIALS */}
       <section className="max-w-4xl mx-auto px-6 py-20">
         <div className="text-center mb-12">
