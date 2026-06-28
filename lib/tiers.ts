@@ -48,21 +48,21 @@ export interface TierFeatures {
 }
 
 export const TIER_FEATURES: Record<SubscriptionTier, TierFeatures> = {
-  // Trial = full Pro features for 30 days
+  // Trial = full Agency features for 30 days
   trial: {
     maxLinks: "unlimited",
     maxRotators: "unlimited",
     maxCSPerRotator: "unlimited",
     maxBioLinks: "unlimited",
-    maxTeamMembers: 5,
+    maxTeamMembers: "unlimited",
     metaCapi: true,
     multiCurrency: true,
     crm: true,
     wallet: true,
     exportReports: true,
-    multiWorkspace: false,
-    apiAccess: false,
-    prioritySupport: false,
+    multiWorkspace: true,
+    apiAccess: true,
+    prioritySupport: true,
   },
   starter: {
     maxLinks: 10,
