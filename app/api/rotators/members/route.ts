@@ -37,7 +37,7 @@ export async function POST(req: NextRequest) {
 
   const { data: member, error } = await db
     .from("rotator_members")
-    .insert({ rotator_id: rotatorId, name, phone, sort_order: Date.now() })
+    .insert({ rotator_id: rotator.id, name, phone, sort_order: 0 })
     .select()
     .single();
 
