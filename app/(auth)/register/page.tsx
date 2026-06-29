@@ -33,6 +33,13 @@ export default function RegisterPage() {
       setLoading(false);
       return;
     }
+    // Send welcome email (fire-and-forget)
+    fetch("/api/send-welcome", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, email }),
+    }).catch(() => {});
+
     toast.success("Akun dibuat! Cek email untuk verifikasi, lalu login.");
     router.push("/login?registered=1");
     setLoading(false);
