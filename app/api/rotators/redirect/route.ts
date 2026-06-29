@@ -3,7 +3,7 @@ import { createServerClient } from "@supabase/ssr";
 import { checkSchedule } from "@/lib/schedule";
 
 // GET /api/rotators/redirect?slug=xxx
-// Public endpoint — picks next active CS member via round-robin
+// Public endpoint — picks next active CS member via round-robin using persistent counter
 export async function GET(req: NextRequest) {
   const slug = req.nextUrl.searchParams.get("slug");
   if (!slug) return NextResponse.json({ error: "slug required" }, { status: 400 });
@@ -17,7 +17,7 @@ export async function GET(req: NextRequest) {
   // Find rotator by slug
   const { data: rotator } = await db
     .from("rotators")
-    .select("id, schedule, user_id")
+    .select("id, schedule, user_id, current_index")
     .eq("slug", slug)
     .eq("active", true)
     .single();
@@ -27,30 +27,35 @@ export async function GET(req: NextRequest) {
   // Check schedule if configured
   if (rotator.schedule) {
     const result = checkSchedule(rotator.schedule);
-    if (!result.isOpen) {
-      return NextResponse.json({ closed: true, ...result });
-    }
+    if (!result.isOpen) return NextResponse.json({ closed: true, ...result });
   }
 
-  // Get active members ordered by sort_order
+  // Get active members ordered by sort_order then created_at
   const { data: members } = await db
     .from("rotator_members")
     .select("id, name, phone")
     .eq("rotator_id", rotator.id)
     .eq("active", true)
-    .order("sort_order", { ascending: true });
+    .order("sort_order", { ascending: true })
+    .order("created_at", { ascending: true });
 
   if (!members || members.length === 0)
     return NextResponse.json({ error: "No active CS members" }, { status: 404 });
 
-  // Round-robin: count total clicks for this rotator, pick next
-  const { count } = await db
-    .from("click_events")
-    .select("*", { count: "exact", head: true })
-    .eq("rotator_id", rotator.id);
-
-  const index = (count ?? 0) % members.length;
+  // Pick current member, then increment counter for next call
+  const index  = (rotator.current_index ?? 0) % members.length;
   const member = members[index];
+  const next   = (index + 1) % members.length;
 
-  return NextResponse.json({ phone: member.phone, memberName: member.name, memberId: member.id, rotatorId: rotator.id });
+  // Increment counter (fire-and-forget, don't block response)
+  db.from("rotators").update({ current_index: next }).eq("id", rotator.id).then(() => {});
+
+  return NextResponse.json({
+    phone: member.phone,
+    memberName: member.name,
+    memberId: member.id,
+    rotatorId: rotator.id,
+    index,
+    total: members.length,
+  });
 }
