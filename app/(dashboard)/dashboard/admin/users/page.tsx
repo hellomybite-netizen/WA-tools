@@ -1,233 +1,185 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { toast } from "sonner";
+import { TIERS, SubscriptionTier } from "@/lib/tiers";
 import { ROLES, UserRole } from "@/lib/roles";
 
-interface TeamMember {
+interface User {
   id: string;
   email: string;
   name: string;
+  business_name: string;
+  phone: string;
   role: UserRole;
-  joinedAt: string;
-  lastActive: string;
-  stats: { leads?: number; conversions?: number; links?: number };
+  tier: SubscriptionTier;
+  trial_ends_at: string | null;
+  created_at: string;
 }
 
-const demoMembers: TeamMember[] = [
-  { id: "1", email: "admin@toko.id",       name: "Budi Santoso",  role: "admin",      joinedAt: "1 Jan 2025",  lastActive: "Baru saja",    stats: {} },
-  { id: "2", email: "marketing@toko.id",   name: "Rina Kusuma",   role: "advertiser", joinedAt: "5 Feb 2025",  lastActive: "2 jam lalu",   stats: { leads: 247, links: 18 } },
-  { id: "3", email: "iklan2@toko.id",      name: "Dani Wijaya",   role: "advertiser", joinedAt: "10 Mar 2025", lastActive: "1 hari lalu",  stats: { leads: 134, links: 9 } },
-  { id: "4", email: "cs1@toko.id",         name: "Siti Aminah",   role: "cs",         joinedAt: "1 Feb 2025",  lastActive: "30 mnt lalu",  stats: { conversions: 34 } },
-  { id: "5", email: "cs2@toko.id",         name: "Ahmad Fauzi",   role: "cs",         joinedAt: "1 Feb 2025",  lastActive: "1 jam lalu",   stats: { conversions: 28 } },
-  { id: "6", email: "cs3@toko.id",         name: "Dewi Hartanti", role: "cs",         joinedAt: "15 Mar 2025", lastActive: "3 jam lalu",   stats: { conversions: 19 } },
-];
+const TIER_OPTIONS: SubscriptionTier[] = ["trial", "starter", "pro", "agency"];
+const ROLE_OPTIONS: UserRole[] = ["admin", "advertiser", "cs"];
 
-export default function UsersPage() {
-  const [members, setMembers] = useState<TeamMember[]>(demoMembers);
-  const [inviteEmail, setInviteEmail] = useState("");
-  const [inviteRole, setInviteRole] = useState<UserRole>("cs");
-  const [inviteName, setInviteName] = useState("");
-  const [sending, setSending] = useState(false);
-  const [filter, setFilter] = useState<UserRole | "all">("all");
-  const [editingId, setEditingId] = useState<string | null>(null);
+export default function AdminUsersPage() {
+  const [users, setUsers]     = useState<User[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch]   = useState("");
+  const [filterTier, setFilterTier] = useState<SubscriptionTier | "all">("all");
+  const [saving, setSaving]   = useState<string | null>(null);
 
-  async function handleInvite(e: React.FormEvent) {
-    e.preventDefault();
-    if (!inviteEmail || !inviteName) return;
-    setSending(true);
-    await new Promise((r) => setTimeout(r, 800));
-    setMembers((prev) => [
-      ...prev,
-      {
-        id: Date.now().toString(),
-        email: inviteEmail,
-        name: inviteName,
-        role: inviteRole,
-        joinedAt: "Baru diundang",
-        lastActive: "Belum login",
-        stats: {},
-      },
-    ]);
-    toast.success(`Undangan dikirim ke ${inviteEmail} sebagai ${ROLES[inviteRole].label}`);
-    setInviteEmail("");
-    setInviteName("");
-    setSending(false);
+  const load = useCallback(async () => {
+    const res = await fetch("/api/admin/users");
+    if (res.ok) { const { users } = await res.json(); setUsers(users); }
+    else toast.error("Gagal memuat data user");
+    setLoading(false);
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  async function updateUser(userId: string, field: "tier" | "role", value: string) {
+    setSaving(userId + field);
+    const res = await fetch("/api/admin/users", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userId, [field]: value }),
+    });
+    if (res.ok) {
+      setUsers(prev => prev.map(u => u.id === userId ? { ...u, [field]: value } : u));
+      toast.success("Berhasil diperbarui");
+    } else {
+      toast.error("Gagal memperbarui");
+    }
+    setSaving(null);
   }
 
-  function changeRole(id: string, newRole: UserRole) {
-    setMembers((prev) => prev.map((m) => (m.id === id ? { ...m, role: newRole } : m)));
-    toast.success("Role diperbarui");
-    setEditingId(null);
-  }
+  const filtered = users.filter(u => {
+    const matchSearch = !search || u.email.includes(search) || u.name?.toLowerCase().includes(search.toLowerCase()) || u.business_name?.toLowerCase().includes(search.toLowerCase());
+    const matchTier   = filterTier === "all" || u.tier === filterTier;
+    return matchSearch && matchTier;
+  });
 
-  function removeMember(id: string) {
-    setMembers((prev) => prev.filter((m) => m.id !== id));
-    toast.success("Anggota dihapus dari tim");
-  }
+  // Stats
+  const stats = {
+    total:   users.length,
+    trial:   users.filter(u => u.tier === "trial").length,
+    starter: users.filter(u => u.tier === "starter").length,
+    pro:     users.filter(u => u.tier === "pro").length,
+    agency:  users.filter(u => u.tier === "agency").length,
+  };
 
-  const filtered = filter === "all" ? members : members.filter((m) => m.role === filter);
-  const counts = { all: members.length, admin: members.filter(m=>m.role==="admin").length, advertiser: members.filter(m=>m.role==="advertiser").length, cs: members.filter(m=>m.role==="cs").length };
+  const formatDate = (d: string) => new Date(d).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" });
+
+  if (loading) return <div className="py-16 text-center text-gray-400 text-sm">Memuat data...</div>;
 
   return (
     <div>
-      <h1 className="text-2xl font-bold mb-1">Kelola User & Tim</h1>
-      <p className="text-gray-500 text-sm mb-6">Undang anggota tim dan atur akses mereka</p>
+      <h1 className="text-2xl font-bold mb-1">Admin — Kelola User</h1>
+      <p className="text-gray-500 text-sm mb-6">Semua subscriber Chatlacak.com</p>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* LEFT: Invite form */}
-        <div className="space-y-4">
-          <div className="bg-white border rounded-lg p-5">
-            <h2 className="font-semibold mb-4 text-sm">Undang Anggota Baru</h2>
-            <form onSubmit={handleInvite} className="space-y-3">
-              <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Nama</label>
-                <input
-                  value={inviteName}
-                  onChange={(e) => setInviteName(e.target.value)}
-                  className="w-full border rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
-                  placeholder="Nama lengkap"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Email</label>
-                <input
-                  type="email"
-                  value={inviteEmail}
-                  onChange={(e) => setInviteEmail(e.target.value)}
-                  className="w-full border rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
-                  placeholder="email@tim.id"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Role</label>
-                <select
-                  value={inviteRole}
-                  onChange={(e) => setInviteRole(e.target.value as UserRole)}
-                  className="w-full border rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
-                >
-                  {(Object.keys(ROLES) as UserRole[]).map((r) => (
-                    <option key={r} value={r}>{ROLES[r].label} — {ROLES[r].description}</option>
-                  ))}
-                </select>
-              </div>
-              <button
-                type="submit"
-                disabled={sending}
-                className="w-full bg-green-600 text-white py-2 rounded text-sm font-medium hover:bg-green-700 disabled:opacity-50 transition-colors"
-              >
-                {sending ? "Mengirim..." : "Kirim Undangan"}
-              </button>
-            </form>
+      {/* Stats */}
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-6">
+        {[
+          { label: "Total User", value: stats.total, color: "bg-gray-50" },
+          { label: "Trial",      value: stats.trial,   color: "bg-green-50" },
+          { label: "Starter",    value: stats.starter, color: "bg-gray-50" },
+          { label: "Pro",        value: stats.pro,     color: "bg-blue-50" },
+          { label: "Agency",     value: stats.agency,  color: "bg-purple-50" },
+        ].map(s => (
+          <div key={s.label} className={`${s.color} border rounded-lg p-4 text-center`}>
+            <p className="text-2xl font-bold text-gray-900">{s.value}</p>
+            <p className="text-xs text-gray-500 mt-0.5">{s.label}</p>
           </div>
+        ))}
+      </div>
 
-          {/* Role info cards */}
-          <div className="space-y-2">
-            {(Object.entries(ROLES) as [UserRole, typeof ROLES[UserRole]][]).map(([key, r]) => (
-              <div key={key} className="bg-white border rounded-lg p-4">
-                <div className="flex items-center justify-between mb-1">
-                  <div className="flex items-center gap-2">
-                    <span className={`text-xs font-bold px-2 py-0.5 rounded ${r.color}`}>{r.label}</span>
-                    <span className="text-xs text-gray-400">{counts[key]} anggota</span>
-                  </div>
-                </div>
-                <p className="text-xs text-gray-500">{r.description}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* RIGHT: Member list */}
-        <div className="lg:col-span-2">
-          <div className="flex gap-2 mb-4 flex-wrap">
-            {(["all", "admin", "advertiser", "cs"] as const).map((f) => (
-              <button
-                key={f}
-                onClick={() => setFilter(f)}
-                className={`px-3 py-1.5 rounded text-sm font-medium transition-colors ${
-                  filter === f ? "bg-gray-900 text-white" : "border text-gray-500 hover:bg-gray-50"
-                }`}
-              >
-                {f === "all" ? "Semua" : ROLES[f].label} ({counts[f]})
-              </button>
-            ))}
-          </div>
-
-          <div className="bg-white border rounded-lg overflow-hidden">
-            <table className="w-full text-sm">
-              <thead className="bg-gray-50 border-b">
-                <tr>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Anggota</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Role</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Aktivitas</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Terakhir Aktif</th>
-                  <th className="px-4 py-3"></th>
-                </tr>
-              </thead>
-              <tbody className="divide-y">
-                {filtered.map((m) => (
-                  <tr key={m.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-xs font-bold text-gray-600 flex-shrink-0">
-                          {m.name.split(" ").map(n=>n[0]).join("").slice(0,2)}
-                        </div>
-                        <div>
-                          <p className="font-medium text-gray-900 text-sm">{m.name}</p>
-                          <p className="text-xs text-gray-400">{m.email}</p>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3">
-                      {editingId === m.id ? (
-                        <select
-                          defaultValue={m.role}
-                          onChange={(e) => changeRole(m.id, e.target.value as UserRole)}
-                          className="border rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-green-500"
-                          autoFocus
-                          onBlur={() => setEditingId(null)}
-                        >
-                          {(Object.keys(ROLES) as UserRole[]).map((r) => (
-                            <option key={r} value={r}>{ROLES[r].label}</option>
-                          ))}
-                        </select>
-                      ) : (
-                        <button
-                          onClick={() => setEditingId(m.id)}
-                          className={`text-xs font-medium px-2 py-0.5 rounded ${ROLES[m.role].color} hover:opacity-80 transition-opacity`}
-                        >
-                          {ROLES[m.role].label}
-                        </button>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-xs text-gray-500">
-                      {m.role === "advertiser" && m.stats.leads !== undefined && (
-                        <span>{m.stats.leads} leads · {m.stats.links} links</span>
-                      )}
-                      {m.role === "cs" && m.stats.conversions !== undefined && (
-                        <span>{m.stats.conversions} konversi</span>
-                      )}
-                      {m.role === "admin" && <span className="text-gray-400">Full access</span>}
-                    </td>
-                    <td className="px-4 py-3 text-xs text-gray-400">{m.lastActive}</td>
-                    <td className="px-4 py-3 text-right">
-                      {m.id !== "1" && (
-                        <button
-                          onClick={() => removeMember(m.id)}
-                          className="text-xs text-red-400 hover:text-red-600 px-2 transition-colors"
-                        >
-                          Hapus
-                        </button>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+      {/* Filters */}
+      <div className="flex gap-3 mb-4 flex-wrap">
+        <input
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          className="border rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 w-64"
+          placeholder="Cari email / nama / bisnis..."
+        />
+        <div className="flex gap-2 flex-wrap">
+          {(["all", ...TIER_OPTIONS] as const).map(t => (
+            <button key={t} onClick={() => setFilterTier(t as SubscriptionTier | "all")}
+              className={`px-3 py-2 rounded text-sm font-medium transition-colors ${filterTier === t ? "bg-gray-900 text-white" : "border text-gray-500 hover:bg-gray-50"}`}>
+              {t === "all" ? "Semua" : TIERS[t].label}
+            </button>
+          ))}
         </div>
       </div>
+
+      {/* Table */}
+      <div className="bg-white border rounded-lg overflow-hidden">
+        <table className="w-full text-sm">
+          <thead className="bg-gray-50 border-b">
+            <tr>
+              <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">User</th>
+              <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Bisnis</th>
+              <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Tier</th>
+              <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Role</th>
+              <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Trial Berakhir</th>
+              <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Daftar</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y">
+            {filtered.length === 0 && (
+              <tr><td colSpan={6} className="px-4 py-8 text-center text-gray-400 text-sm">Tidak ada user ditemukan</td></tr>
+            )}
+            {filtered.map(u => (
+              <tr key={u.id} className="hover:bg-gray-50">
+                <td className="px-4 py-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center text-xs font-bold text-green-700 flex-shrink-0">
+                      {(u.name || u.email)?.[0]?.toUpperCase() ?? "?"}
+                    </div>
+                    <div>
+                      <p className="font-medium text-gray-900">{u.name || "—"}</p>
+                      <p className="text-xs text-gray-400">{u.email}</p>
+                    </div>
+                  </div>
+                </td>
+                <td className="px-4 py-3">
+                  <p className="text-gray-700">{u.business_name || "—"}</p>
+                  <p className="text-xs text-gray-400">{u.phone || ""}</p>
+                </td>
+                <td className="px-4 py-3">
+                  <select
+                    value={u.tier}
+                    disabled={saving === u.id + "tier"}
+                    onChange={e => updateUser(u.id, "tier", e.target.value)}
+                    className={`border rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-green-500 ${TIERS[u.tier]?.color ?? ""}`}
+                  >
+                    {TIER_OPTIONS.map(t => (
+                      <option key={t} value={t}>{TIERS[t].label}</option>
+                    ))}
+                  </select>
+                </td>
+                <td className="px-4 py-3">
+                  <select
+                    value={u.role}
+                    disabled={saving === u.id + "role"}
+                    onChange={e => updateUser(u.id, "role", e.target.value)}
+                    className="border rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-green-500"
+                  >
+                    {ROLE_OPTIONS.map(r => (
+                      <option key={r} value={r}>{ROLES[r].label}</option>
+                    ))}
+                  </select>
+                </td>
+                <td className="px-4 py-3 text-xs text-gray-500">
+                  {u.trial_ends_at ? formatDate(u.trial_ends_at) : "—"}
+                </td>
+                <td className="px-4 py-3 text-xs text-gray-400">
+                  {u.created_at ? formatDate(u.created_at) : "—"}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <p className="text-xs text-gray-400 mt-3">{filtered.length} dari {users.length} user ditampilkan</p>
     </div>
   );
 }
