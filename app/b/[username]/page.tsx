@@ -30,8 +30,10 @@ export default async function BioPage({ params }: { params: Promise<{ username: 
       <div className="w-full max-w-sm">
         <div className="bg-white rounded-2xl shadow-sm border p-8">
           <div className="text-center mb-8">
-            <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center text-3xl mx-auto mb-4">
-              🏪
+            <div className="w-20 h-20 bg-green-100 rounded-full overflow-hidden flex items-center justify-center text-3xl mx-auto mb-4 border-2 border-green-200">
+              {bio.avatar_url
+                ? <img src={bio.avatar_url} alt={bio.title} className="w-full h-full object-cover" />
+                : "🏪"}
             </div>
             <h1 className="text-xl font-bold text-gray-900">{bio.title || "Toko Kami"}</h1>
             {bio.subtitle && (

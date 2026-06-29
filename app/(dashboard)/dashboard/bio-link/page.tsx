@@ -1,6 +1,7 @@
 "use client";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { toast } from "sonner";
+import { createClient } from "@/lib/supabase";
 
 interface BioButton {
   id: string;
@@ -14,16 +15,19 @@ interface BioLink {
   title: string;
   subtitle: string;
   buttons: BioButton[];
+  avatar_url: string;
 }
 
-const DEFAULT: BioLink = { username: "", title: "", subtitle: "", buttons: [] };
+const DEFAULT: BioLink = { username: "", title: "", subtitle: "", buttons: [], avatar_url: "" };
 
 export default function BioLinkPage() {
-  const [bio, setBio]         = useState<BioLink>(DEFAULT);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving]   = useState(false);
-  const [newLabel, setNewLabel] = useState("");
-  const [newPhone, setNewPhone] = useState("");
+  const [bio, setBio]             = useState<BioLink>(DEFAULT);
+  const [loading, setLoading]     = useState(true);
+  const [saving, setSaving]       = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [newLabel, setNewLabel]   = useState("");
+  const [newPhone, setNewPhone]   = useState("");
+  const fileRef = useRef<HTMLInputElement>(null);
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://wa-tools-zeta.vercel.app";
   const bioUrl = bio.username ? `${appUrl}/b/${bio.username}` : "";
@@ -32,7 +36,7 @@ export default function BioLinkPage() {
     const res = await fetch("/api/bio-link");
     if (res.ok) {
       const { bioLink } = await res.json();
-      if (bioLink) setBio({ username: bioLink.username, title: bioLink.title ?? "", subtitle: bioLink.subtitle ?? "", buttons: bioLink.buttons ?? [] });
+      if (bioLink) setBio({ username: bioLink.username, title: bioLink.title ?? "", subtitle: bioLink.subtitle ?? "", buttons: bioLink.buttons ?? [], avatar_url: bioLink.avatar_url ?? "" });
     }
     setLoading(false);
   }, []);
@@ -50,8 +54,38 @@ export default function BioLinkPage() {
     });
     const data = await res.json();
     if (!res.ok) toast.error(data.error ?? "Gagal menyimpan");
-    else { toast.success("Bio Link disimpan!"); setBio({ username: data.bioLink.username, title: data.bioLink.title ?? "", subtitle: data.bioLink.subtitle ?? "", buttons: data.bioLink.buttons ?? [] }); }
+    else { toast.success("Bio Link disimpan!"); setBio({ username: data.bioLink.username, title: data.bioLink.title ?? "", subtitle: data.bioLink.subtitle ?? "", buttons: data.bioLink.buttons ?? [], avatar_url: data.bioLink.avatar_url ?? "" }); }
     setSaving(false);
+  }
+
+  async function handleAvatarUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) { toast.error("Ukuran file maksimal 2MB"); return; }
+
+    setUploading(true);
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) { toast.error("Tidak terautentikasi"); setUploading(false); return; }
+
+    const ext  = file.name.split(".").pop();
+    const path = `${user.id}/avatar.${ext}`;
+
+    const { error: uploadError } = await supabase.storage.from("bio-avatars").upload(path, file, { upsert: true });
+    if (uploadError) { toast.error("Upload gagal: " + uploadError.message); setUploading(false); return; }
+
+    const { data: { publicUrl } } = supabase.storage.from("bio-avatars").getPublicUrl(path);
+    // Append cache-bust so browser shows new image immediately
+    const avatarUrl = `${publicUrl}?t=${Date.now()}`;
+
+    const updated = { ...bio, avatar_url: avatarUrl };
+    setBio(updated);
+    if (bio.username) {
+      await fetch("/api/bio-link", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(updated) });
+    }
+    toast.success("Foto profil diperbarui!");
+    setUploading(false);
+    if (fileRef.current) fileRef.current.value = "";
   }
 
   async function addButton(e: React.FormEvent) {
@@ -86,6 +120,29 @@ export default function BioLinkPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="space-y-4">
+          {/* Avatar upload */}
+          <div className="bg-white border rounded-lg p-6">
+            <h2 className="font-semibold mb-4">Foto Profil</h2>
+            <div className="flex items-center gap-4">
+              <div className="w-20 h-20 rounded-full overflow-hidden bg-green-100 flex items-center justify-center flex-shrink-0 border-2 border-green-200">
+                {bio.avatar_url
+                  ? <img src={bio.avatar_url} alt="avatar" className="w-full h-full object-cover" />
+                  : <span className="text-3xl">🏪</span>}
+              </div>
+              <div>
+                <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} />
+                <button
+                  onClick={() => fileRef.current?.click()}
+                  disabled={uploading}
+                  className="px-4 py-2 bg-green-600 text-white text-sm font-medium rounded hover:bg-green-700 disabled:opacity-50 transition-colors"
+                >
+                  {uploading ? "Mengupload..." : "Ganti Foto"}
+                </button>
+                <p className="text-xs text-gray-400 mt-1.5">JPG, PNG, atau WebP. Maks 2MB.</p>
+              </div>
+            </div>
+          </div>
+
           <form onSubmit={handleSave} className="bg-white border rounded-lg p-6 space-y-4">
             <h2 className="font-semibold">Pengaturan Halaman</h2>
             <div>
@@ -153,7 +210,11 @@ export default function BioLinkPage() {
           <h2 className="font-semibold mb-4 text-sm text-gray-500 uppercase tracking-wide">Preview</h2>
           <div className="max-w-xs mx-auto bg-gray-50 rounded-xl p-6 border">
             <div className="text-center mb-6">
-              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center text-2xl mx-auto mb-3">🏪</div>
+              <div className="w-20 h-20 rounded-full overflow-hidden bg-green-100 flex items-center justify-center text-3xl mx-auto mb-3 border-2 border-green-200">
+                {bio.avatar_url
+                  ? <img src={bio.avatar_url} alt="avatar" className="w-full h-full object-cover" />
+                  : <span>🏪</span>}
+              </div>
               <h3 className="font-bold text-lg text-gray-900">{bio.title || "Nama Toko"}</h3>
               {bio.subtitle && <p className="text-sm text-gray-500 mt-1">{bio.subtitle}</p>}
             </div>
