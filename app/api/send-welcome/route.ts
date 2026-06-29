@@ -14,7 +14,7 @@ export async function POST(req: NextRequest) {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://wa-tools-zeta.vercel.app";
 
   const { error } = await resend.emails.send({
-    from: "WA Tools <onboarding@resend.dev>",
+    from: "WA Tools <noreply@chatlacak.com>",
     to: email,
     subject: `Selamat datang di WA Tools, ${name}! 🎉`,
     html: `
