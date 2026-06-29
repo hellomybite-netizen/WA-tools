@@ -25,6 +25,7 @@ export const ROLES = {
 export const ROLE_NAV: Record<UserRole, { href: string; label: string; icon: string }[]> = {
   admin: [
     { href: "/dashboard", label: "Overview", icon: "▦" },
+    { href: "/dashboard/admin", label: "Owner Dashboard", icon: "📈" },
     { href: "/dashboard/admin/users", label: "Kelola User", icon: "👥" },
     { href: "/dashboard/url-generator", label: "URL Generator", icon: "🔗" },
     { href: "/dashboard/chat-rotator", label: "Chat Rotator", icon: "🔄" },
