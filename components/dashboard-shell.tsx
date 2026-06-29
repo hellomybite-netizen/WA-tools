@@ -1,10 +1,11 @@
 "use client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { ROLES, ROLE_NAV, UserRole } from "@/lib/roles";
 import { TIERS, TIER_FEATURES, SubscriptionTier } from "@/lib/tiers";
 import DemoRoleSwitcher from "@/components/demo-role-switcher";
+import { createClient } from "@/lib/supabase";
 
 interface Props {
   children: React.ReactNode;
@@ -28,8 +29,17 @@ const NAV_TIER_GATES: Record<string, keyof typeof TIER_FEATURES["starter"]> = {
 
 export default function DashboardShell({ children, serverRole, serverTier, userEmail, isDemo, trialDaysLeft, trialExpired }: Props) {
   const pathname = usePathname();
+  const router   = useRouter();
   const [role, setRole] = useState<UserRole>(serverRole ?? "advertiser");
   const [tier, setTier] = useState<SubscriptionTier>(serverTier ?? "pro");
+
+  async function handleLogout() {
+    if (!isDemo) {
+      const supabase = createClient();
+      await supabase.auth.signOut();
+    }
+    router.push("/login");
+  }
 
   useEffect(() => {
     if (!isDemo) return;
@@ -105,13 +115,20 @@ export default function DashboardShell({ children, serverRole, serverTier, userE
             </Link>
           )}
 
-          <p className="text-xs text-gray-400 truncate">
+          <Link href="/dashboard/profile" className="block text-xs text-gray-400 truncate hover:text-gray-600 transition-colors">
             {userEmail ?? `demo-${role}@watools.id`}
-          </p>
+          </Link>
 
           {isDemo && (
             <p className="text-xs text-orange-400 font-medium">● Demo Mode</p>
           )}
+
+          <button
+            onClick={handleLogout}
+            className="w-full text-left text-xs text-gray-400 hover:text-red-500 transition-colors py-0.5"
+          >
+            → Keluar
+          </button>
         </div>
       </aside>
 
