@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
   const user = await getAuthUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { username, title, subtitle, buttons } = await req.json();
+  const { username, title, subtitle, buttons, avatar_url } = await req.json();
   if (!username) return NextResponse.json({ error: "username required" }, { status: 400 });
 
   const db = serviceClient();
@@ -39,7 +39,7 @@ export async function POST(req: NextRequest) {
 
   const { data, error } = await db
     .from("bio_links")
-    .upsert({ user_id: user.id, username, title, subtitle, buttons, updated_at: new Date().toISOString() }, { onConflict: "user_id" })
+    .upsert({ user_id: user.id, username, title, subtitle, buttons, avatar_url, updated_at: new Date().toISOString() }, { onConflict: "user_id" })
     .select()
     .single();
 
